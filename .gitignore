@@ -1,0 +1,7 @@
+target/
+*.o
+hello_compartment
+*.swo
+*.swp
+*.d
+report/
