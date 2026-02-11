@@ -32,7 +32,7 @@ ifeq ($(DBG),true)
 	CFLAGS  += $(DBG_FLAGS)
 	OUT_DIR := $(DBG_DIR)
 else ifeq ($(PRF),true)
-	CFLAGS  += $(DBG_FLAGS) PRF_FLAGS
+	CFLAGS  += $(DBG_FLAGS) $(PRF_FLAGS)
 	OUT_DIR := $(DBG_DIR)
 else
 	CFLAGS  += $(REL_FLAGS)
