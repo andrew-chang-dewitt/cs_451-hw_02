@@ -8,8 +8,8 @@ hello_exe=$hello_dir/hello_compartment
 
 life_tgt_dir=$tgt_dir/life
 life_rel_dir=$life_tgt_dir/release
-life_rel_bin_dir=$rel_dir/bin
-life_dbg_dir=$tgt_dir/debug
+life_rel_bin_dir=$life_rel_dir/bin
+life_dbg_dir=$life_tgt_dir/debug
 life_dbg_bin_dir=$life_dbg_dir/bin
 
 life_dir=$prj_root/life
@@ -18,7 +18,7 @@ life_dbg=$life_dbg_bin_dir/life
 
 part_tgt_dir=$tgt_dir/part
 part_rel_dir=$part_tgt_dir/release
-part_rel_bin_dir=$rel_dir/bin
+part_rel_bin_dir=$part_rel_dir/bin
 part_dbg_dir=$part_tgt_dir/debug
 part_dbg_bin_dir=$part_dbg_dir/bin
 
