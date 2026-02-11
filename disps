@@ -1,0 +1,6 @@
+disp { world_history[0], world_history[1], world_history[2], world_history[3], world_history[4], world_history[5], world_history[6], world_history[7], world_history[8], world_history[9] }
+disp world_history
+disp step_num
+disp size
+disp result.bufc
+disp result.buf

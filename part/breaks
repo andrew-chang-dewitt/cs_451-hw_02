@@ -1,0 +1,5 @@
+break partitioned_life.c:58
+break compart_start
+break split_parent_child
+break parent_loop
+break compost_recv

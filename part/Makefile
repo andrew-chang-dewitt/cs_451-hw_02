@@ -5,8 +5,16 @@ CFLAGS    += -Wall -Wextra -Wformat=2 -Wswitch-default -Wcast-align \
 	     -Wpointer-arith -Wbad-function-cast -Wstrict-prototypes -Winline \
 	     -Wundef -Wnested-externs -Wcast-qual -Wshadow -Wwrite-strings \
 	     -Wconversion -Wunreachable-code -Wstrict-aliasing=2 -fno-common \
-	     -fstrict-aliasing -std=c99 -pedantic
+	     -fstrict-aliasing -std=c99 -pedantic -DPITCHFORK_DBGSTDOUT -DINCLUDE_PID \
 	     
+CMPT_FLAGS = -I../libcompart/
+
+ifeq ($(LC_LIB),dynamic)
+	CMPT_FLAGS += -L../libcompart/ -lcompart
+else
+	CMPT_FLAGS += ../libcompart/compart.o
+endif
+
 DBG_FLAGS  = -O0 -g -include stdbool.h
 REL_FLAGS  = -O3
 PRF_FLAGS  = -p
@@ -14,7 +22,7 @@ PRF_FLAGS  = -p
 LOC       := $(shell readlink -f .)
 PRJ_ROOT  := $(LOC)/..
 
-TGT_DIR   := $(PRJ_ROOT)/target/life
+TGT_DIR   := $(PRJ_ROOT)/target/part
 
 REL_DIR   := $(TGT_DIR)/release
 DBG_DIR   := $(TGT_DIR)/debug
@@ -32,20 +40,34 @@ else
 endif
 
 BIN_DIR   := $(OUT_DIR)/bin
+OBJ_DIR   := $(OUT_DIR)/obj
 SRC_DIR   := $(LOC)
 
-.PHONY: clean life
+DEPS      := world.c interface.c
+OBJS      := $(DEPS:%.c=$(OBJ_DIR)/%.o)
+
+.PHONY: clean part
 
 
-life: $(BIN_DIR)/life
+part: $(BIN_DIR)/partitioned_life
 
 
-$(BIN_DIR)/life: $(SRC_DIR)/life.c $(OBJS) | $(BIN_DIR)
+$(BIN_DIR)/partitioned_life: $(SRC_DIR)/partitioned_life.c $(OBJS) | $(BIN_DIR)
 	@echo "building binary $@ from $< ..."
 	$(CC) $(CFLAGS) $(CMPT_FLAGS) $< $(OBJS) -o $@
 	@echo "... $@ built."
 
-$(BIN_DIR):
+$(OBJ_DIR)/world.o: $(SRC_DIR)/world.c | $(OBJ_DIR)
+	@echo "building object $@ from $< ..."
+	$(CC) $(CFLAGS) -c $< -o $@
+	@echo "... $@ built."
+
+$(OBJ_DIR)/interface.o: $(SRC_DIR)/interface.c | $(OBJ_DIR)
+	@echo "building object $@ from $< ..."
+	$(CC) $(CFLAGS) $(CMPT_FLAGS) -c $< -o $@
+	@echo "... $@ built."
+
+$(BIN_DIR) $(OBJ_DIR):
 	@mkdir -p $@
 
 clean:

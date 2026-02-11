@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+prj_root=`dirname $(realpath "$0")`/..
+tgt_dir=$prj_root/target/life
+rel_dir=$tgt_dir/release
+rel_bin_dir=$rel_dir/bin
+dbg_dir=$tgt_dir/debug
+dbg_bin_dir=$tgt_dir/debug/bin
+
+life_dir=$prj_root/life
+life_exe=$rel_bin_dir/life
+life_dbg=$dbg_bin_dir/life
+life_exe=$rel_bin_dir/life
+
+report_dir=$prj_root/report
+
+args=" -s 3 -c 5 -i 011110010"
+# args="-s 20 -c 100 -i 011001010110101111011001010110101111010111101010101111100110111"
+
+# build
+echo "Building life binaries..."
+echo ""
+cd $life_dir
+sudo -u andrew make DBG=true life && $life_dbg $args
+echo ""
+echo "done."
+echo ""

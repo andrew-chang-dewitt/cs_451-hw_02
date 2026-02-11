@@ -2,17 +2,29 @@
 
 prj_root=`dirname $(realpath "$0")`/..
 tgt_dir=$prj_root/target
-rel_dir=$tgt_dir/release
-rel_bin_dir=$rel_dir/bin
-dbg_dir=$tgt_dir/debug
-dbg_bin_dir=$tgt_dir/debug/bin
 
 hello_dir=$prj_root/hello_compartment
 hello_exe=$hello_dir/hello_compartment
 
+life_tgt_dir=$tgt_dir/life
+life_rel_dir=$life_tgt_dir/release
+life_rel_bin_dir=$rel_dir/bin
+life_dbg_dir=$tgt_dir/debug
+life_dbg_bin_dir=$life_dbg_dir/bin
+
 life_dir=$prj_root/life
-life_exe=$rel_bin_dir/life
-life_dbg=$dbg_bin_dir/life
+life_exe=$life_rel_bin_dir/life
+life_dbg=$life_dbg_bin_dir/life
+
+part_tgt_dir=$tgt_dir/part
+part_rel_dir=$part_tgt_dir/release
+part_rel_bin_dir=$rel_dir/bin
+part_dbg_dir=$tgt_dir/debug
+part_dbg_bin_dir=$part_dbg_dir/bin
+
+part_dir=$prj_root/part
+part_exe=$part_rel_bin_dir/partitioned_life
+part_dbg=$part_dbg_bin_dir/partitioned_life
 
 report_dir=$prj_root/report
 
@@ -79,7 +91,7 @@ echo "Profiling life..."
 echo ""
 cd $dbg_bin_dir
 sudo -u andrew $life_dbg $args
-sudo -u andrew gprof $life_dbg $dbg_bin_dir/gmon.out > $report_dir/e.out 2> $report_dir/e.err
+sudo -u andrew gprof $life_dbg $life_dbg_bin_dir/gmon.out > $report_dir/e.out 2> $report_dir/e.err
 echo ""
 echo "done."
 echo ""

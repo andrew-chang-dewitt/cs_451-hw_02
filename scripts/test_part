@@ -1,30 +1,30 @@
 #!/usr/bin/env bash
 
 prj_root=`dirname $(realpath "$0")`/..
-tgt_dir=$prj_root/target
+tgt_dir=$prj_root/target/part
 rel_dir=$tgt_dir/release
 rel_bin_dir=$rel_dir/bin
 dbg_dir=$tgt_dir/debug
-dbg_bin_dir=$tgt_dir/debug/bin
+dbg_bin_dir=$dbg_dir/bin
 
-hello_dir=$prj_root/hello_compartment
-hello_exe=$hello_dir/hello_compartment
-
-life_dir=$prj_root/life
-life_exe=$rel_bin_dir/life
-life_dbg=$dbg_bin_dir/life
+part_dir=$prj_root/part
+part_exe=$rel_bin_dir/partitioned_life
+part_dbg=$dbg_bin_dir/partitioned_life
 part_exe=$rel_bin_dir/partitioned_life
 
 report_dir=$prj_root/report
 
-args=" -s 3 -c 5 -i 101001011"
+args=" -s 3 -c 5 -i 011110010"
+ 
 # args="-s 20 -c 100 -i 011001010110101111011001010110101111010111101010101111100110111"
 
 # build
-echo "Building life binaries..."
+echo "Building part binaries..."
 echo ""
-cd $life_dir
-sudo -u andrew make clean && sudo -u andrew make part && $part_exe $args
+cd $part_dir
+sudo -u andrew make DBG=true part \
+    && echo "running command: $part_dbg $args" \
+    && $part_dbg $args
 echo ""
 echo "done."
 echo ""

@@ -1,0 +1,8 @@
+file target/part/debug/bin/partitioned_life
+
+delete breaks
+break part/partitioned_life.c:131
+break ext_step
+break ext_history_from_arg
+break ext_stepnum_size_from_arg
+break ext_step_to_arg
