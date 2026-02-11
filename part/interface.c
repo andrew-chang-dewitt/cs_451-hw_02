@@ -44,7 +44,7 @@ struct extension_id *step_ext = NULL;
  * Compartment extension fn
  * * * * * * * * * * * * * * * * * * * * * * * */
 
-// execute a step on the given history of states
+// execute next step based on the given state
 // shows pattern we'll see across other ext_* functions:
 // 1. declare a file descriptor for logging
 // 2. deserialize argument data
@@ -53,19 +53,11 @@ struct extension_id *step_ext = NULL;
 // 5. return output of (4)
 //
 // data {
-//   //     8 bytes   8 bytes  4 bytes       size_history bytes
-//   //     ul        ul       size_t        char*
-//   buf: { step_num, size   , size_history, world_history }
+//   //     8 bytes  size_history bytes
+//   //     ul       char*
+//   buf: { size   , step state }
 // }
 struct extension_data ext_step(struct extension_data data) {
-  struct extension_data result;
-
-  unsigned long step_num = 0;
-  unsigned long size = 0;
-  size_t offset_history = 0;
-  size_t size_history = 0;
-  char *world_history = NULL;
-
   // 1. declare a file descriptor for logging
   int fd = -1;
 #ifdef LC_ALLOW_EXCHANGE_FD
@@ -74,86 +66,30 @@ struct extension_data ext_step(struct extension_data data) {
   dprintf(fd, "[%s:ext_step()]:%d BEGIN\n", compart_name(), getuid());
 
   // 2. deserialize argument data
-#ifndef LC_ALLOW_EXCHANGE_FD
-  offset_history = ext_nums_from_arg(data, &step_num, &size, &size_history);
-#else
-  offset_history = ext_nums_from_arg(data, &step_num, &size, &size_history, fd);
-#endif
-  dprintf(fd, "[%s:ext_step()]:%d numbers extracted (%ld, %ld, %d, %d)\n",
-          compart_name(), getuid(), step_num, size, size_history,
-          offset_history);
+  struct extension_data result;
+  result.bufc = data.bufc;
 
-  world_history = malloc(size_history);
+  unsigned long size = 0;
+  size_t size_step = data.bufc - sizeof(size);
+  char *prev_step = malloc(size_step);
 
 #ifndef LC_ALLOW_EXCHANGE_FD
-  ext_history_from_arg(data, size_history, world_history);
+  ext_step_from_arg(data, &size, prev_step);
 #else
-  ext_history_from_arg(data, world_history, fd);
+  ext_step_from_arg(data, &size, prev_step, fd);
 #endif
-  dprintf(fd, "[%s:ext_step()]:%d world_history extracted: ", compart_name(),
-          getuid());
-  print_world(fd, world_history, size, step_num);
+  dprintf(fd, "[%s:ext_step()]:%d state extracted for step of size (%ld)\n",
+          compart_name(), getuid(), size);
 
   // 3. perform computation w/ output of (2)
-  step(world_history, size, step_num);
+  char *next_step = malloc(size_step);
+  step(prev_step, size, next_step);
 
   // 4. serialize value to return
-  result = ext_step_to_arg(step_num, size, size_history, world_history);
+  result = ext_step_to_arg(size, next_step);
 
   // 5. return output of (4)
   return result;
-
-  //   unsigned long step_num = 0;
-  //   unsigned long size = 0;
-  //   int offset = -1;
-  //
-  //   // 1. declare a file descriptor for logging
-  //   int fd = -1;
-  // #ifndef LC_ALLOW_EXCHANGE_FD
-  //   fd = STDOUT_FILENO;
-  //   // dprintf(fd, "[%s]:%d BEGIN\n", compart_name(), getuid());
-  //   dprintf(fd, "[%s:ext_step()]:%d BEGIN\n", compart_name(), getuid());
-  //   // unpack the integer given in `data`
-  //   // 2. deserialize argument data
-  //   // ext_ints_from_arg(data, &num1, &num2);
-  //   offset = ext_nums_from_arg(data, &step_num, &size);
-  // #else
-  //   dprintf(fd, "[%s:ext_step()]:%d BEGIN\n", compart_name(), getuid());
-  //   // ext_ints_from_arg(data, &num1, &num2, fd);
-  //   offset = ext_stepnum_size_from_arg(data, &step_num, &size, fd);
-  // #endif // ndef LC_ALLOW_EXCHANGE_FD
-  //   char *world_history = malloc(data.bufc - offset);
-  // #ifndef LC_ALLOW_EXCHANGE_FD
-  //   ext_history_from_arg(data, offset, world_history);
-  // #else
-  //   ext_history_from_arg(data, offset, world_history, fd);
-  // #endif // ndef LC_ALLOW_EXCHANGE_FD
-  //   // dprintf(fd, "[%s:ext_step()] got nums (%d, %d)\n", compart_name(),
-  //   num1,
-  //   // num2); num1 += 1; num2 = num2 * 3; dprintf(fd, "[%s:ext_step()]
-  //   returning
-  //   // (%d, %d)\n", compart_name(), num1, num2);
-  //   dprintf(fd, "[%s:ext_step()] got ", compart_name());
-  //   dprintf(fd, "data.buf { .step_num=%ld, ", step_num);
-  //   dprintf(fd, ".size=%ld, ", size);
-  //   dprintf(fd, "...}\n");
-  //   step(world_history, size, step_num);
-  //   dprintf(fd, "[%s:ext_step()]:%d step computed: ", compart_name(),
-  //   getuid()); print_world(fd, world_history, size, step_num); dprintf(fd,
-  //   "\n");
-  // #ifndef LC_ALLOW_EXCHANGE_FD
-  //   // return ext_ints_to_arg(num1, num2);
-  //   struct extension_data result = ext_step_to_arg(step_num, size,
-  //   world_history);
-  // #else
-  //   // return ext_ints_to_arg(num1, num2, fd);
-  //   struct extension_data result =
-  //       ext_step_to_arg(step_num, size, world_history, fd);
-  // #endif // ndef LC_ALLOW_EXCHANGE_FD
-  //   free(world_history);
-  //
-  //   dprintf(fd, "[%s:ext_step()]:%d END\n", compart_name(), getuid());
-  //   return result;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * *
@@ -163,37 +99,29 @@ struct extension_data ext_step(struct extension_data data) {
  * for inter-compart comms
  * * * * * * * * * * * * * * * * * * * * * * * */
 
-// pack (serialize to bytes) a given step number (integer)
-// & world history (size int & string of states)
+// pack (serialize to bytes) a size (integer)
+// & step (string of states)
 // data {
-//   //     8 bytes   8 bytes  4 bytes       size_history bytes
-//   //     ul        ul       size_t        char*
-//   buf: { step_num, size   , size_history, world_history }
+//   //     8 bytes  size_history bytes
+//   //     ul       char*
+//   buf: { size   , world_history }
 // }
 #ifndef LC_ALLOW_EXCHANGE_FD
-struct extension_data ext_step_to_arg(unsigned long step_num,
-                                      unsigned long size, size_t size_history,
-                                      char *world_history)
+struct extension_data ext_step_to_arg(unsigned long size, char *step)
 #else
-struct extension_data ext_step_to_arg(unsigned long step_num,
-                                      unsigned long size, size_t size_history,
-                                      char *world_history, int fd)
+struct extension_data ext_step_to_arg(unsigned long size, char *step, int fd)
 #endif // ndef LC_ALLOW_EXCHANGE_FD
 {
   // create empty result value
   struct extension_data result;
-  // declare size of buffer to be memory size of
-  // int + int + step number * size * size
-  size_t size_step_num = sizeof(step_num);
+
+  // declare size of buffer
   size_t size_size = sizeof(size);
-  size_t size_size_history = sizeof(size_history);
+  size_t size_step = size * size;
+  result.bufc = size_size + size_step;
 
-  result.bufc = size_step_num + size_size + size_size_history + size_history;
-
-  char *cur = packbuf(result.buf, (char *)&step_num, size_step_num);
-  cur = packbuf(cur, (char *)&size, size_size);
-  cur = packbuf(cur, (char *)&size_history, size_size_history);
-  packbuf(cur, world_history, size_history);
+  char *cur = packbuf(result.buf, (char *)&size, size_size);
+  packbuf(cur, step, size_step);
 
 #ifdef LC_ALLOW_EXCHANGE_FD
   result.fdc = 1;
@@ -204,57 +132,28 @@ struct extension_data ext_step_to_arg(unsigned long step_num,
   return result;
 }
 
-// unpack a step number (integer), size (integer), & world history (string of
-// states) from a given argument & store each in given pointers
+// unpack a size (integer) from a given argument & store each in given pointers
 // data {
-//   //     8 bytes   8 bytes  4 bytes       size_history bytes
-//   //     ul        ul       size_t        char*
-//   buf: { step_num, size   , size_history, world_history }
+//   //     8 bytes  size_history bytes
+//   //     ul       char*
+//   buf: { size   , world_history }
 // }
 #ifndef LC_ALLOW_EXCHANGE_FD
-size_t ext_nums_from_arg(struct extension_data data,
-                         unsigned long *step_num_ptr, unsigned long *size_ptr,
-                         size_t *size_history)
+void ext_step_from_arg(struct extension_data data, unsigned long *size_ptr,
+                       char *step_state_ptr)
 #else
-size_t ext_nums_from_arg(struct extension_data data,
-                         unsigned long *step_num_ptr, unsigned long *size_ptr,
-                         size_t *size_history, int *fd)
+void ext_step_from_arg(struct extension_data data, unsigned long *size_ptr,
+                       char *step_state_ptr, int *fd)
 #endif // ndef LC_ALLOW_EXCHANGE_FD
 {
-  size_t size_step_num = sizeof(*step_num_ptr);
   size_t size_size = sizeof(*size_ptr);
-  size_t size_size_history = sizeof(*size_history);
 
-  char *cur = unpackbuf(data.buf, (char *)step_num_ptr, size_step_num);
-  cur = unpackbuf(cur, (char *)size_ptr, size_size);
-  unpackbuf(cur, (char *)size_history, size_size_history);
+  char *cur = unpackbuf(data.buf, (char *)size_ptr, size_size);
 
-#ifdef LC_ALLOW_EXCHANGE_FD
-  // FIXME assert result.fdc == 1;
-  *fd = data.fd[0];
-#endif // LC_ALLOW_EXCHANGE_FD
-  return size_step_num + size_size + size_size_history;
-}
+  size_t size_state = data.bufc - size_size;
 
-// unpack a step number (integer), size (integer), & world history (string of
-// states) from a given argument & store each in given pointers
-// data {
-//   //     8 bytes   8 bytes  4 bytes       size_history bytes
-//   //     ul        ul       size_t        char*
-//   buf: { step_num, size   , size_history, world_history }
-// }
-#ifndef LC_ALLOW_EXCHANGE_FD
-void ext_history_from_arg(struct extension_data data, size_t size_history,
-                          char *world_history)
-#else
-void ext_history_from_arg(struct extension_data data, size_t size_history,
-                          char *world_history, int *fd)
-#endif // ndef LC_ALLOW_EXCHANGE_FD
-{
-  size_t offset = data.bufc - size_history;
-  char *cur = data.buf + offset;
-  memcpy(world_history, cur, size_history);
-  // read history states from buffer
+  unpackbuf(cur, step_state_ptr, size_state);
+
 #ifdef LC_ALLOW_EXCHANGE_FD
   // FIXME assert result.fdc == 1;
   *fd = data.fd[0];

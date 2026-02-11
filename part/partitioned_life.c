@@ -112,7 +112,6 @@ int main(int argc, char *const *argv) {
   assert(cycles > 1);
 
   size_t size_history = size * size * cycles + 1;
-  printf("size_history: %d\n", size_history);
   char *world_history = malloc(size_history);
 
   for (unsigned long i = 0; i < size * size * cycles; i++) {
@@ -123,21 +122,26 @@ int main(int argc, char *const *argv) {
   print_world(fd, world_history, size, 0);
   dprintf(fd, "\n");
 
+  size_t size_step = size * size + 1;
+  char *step_state = malloc(size_step);
   struct extension_data req;
   struct extension_data res;
 
   unsigned long step_num = 1;
 
   for (; step_num < cycles; step_num++) {
-    // serialize current state
-    req = ext_step_to_arg(step_num, size, size_history, world_history);
+    // serialize previous step
+    world_get_step(world_history, size, step_num - 1, step_state);
+    req = ext_step_to_arg(size, step_state);
     // call in step compartment
     res = compart_call_fn(step_ext, req);
-    // extract updated history
-    ext_history_from_arg(res, size_history, world_history);
+    // extract updated histor
+    ext_step_from_arg(res, &size, step_state);
+    world_set_step(world_history, size, step_num, step_state);
 
     // step(world_history, size, step_num);
 
+    // dprintf(fd, "\nstep number %ld:\n", step_num);
     print_world(fd, world_history, size, step_num);
     dprintf(fd, "\n");
   }

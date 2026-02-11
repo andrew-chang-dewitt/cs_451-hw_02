@@ -38,13 +38,9 @@ struct extension_data ext_step(struct extension_data data);
 // pack (serialize to bytes) a given step number (integer)
 // & world history (size int & string of states)
 #ifndef LC_ALLOW_EXCHANGE_FD
-struct extension_data ext_step_to_arg(unsigned long step_num,
-                                      unsigned long size, size_t size_history,
-                                      char *history);
+struct extension_data ext_step_to_arg(unsigned long size, char *step);
 #else
-struct extension_data ext_step_to_arg(unsigned long step_num,
-                                      unsigned long size, size_t size_history,
-                                      char *history, int fd);
+struct extension_data ext_step_to_arg(unsigned long size, char *step, int fd);
 #endif // ndef LC_ALLOW_EXCHANGE_FD
 
 // unpack a step number (integer), size (integer), & world history (string of
@@ -55,22 +51,11 @@ struct extension_data ext_step_to_arg(unsigned long step_num,
 //   buf: { step_num, size   , size_history, world_history }
 // }
 #ifndef LC_ALLOW_EXCHANGE_FD
-size_t ext_nums_from_arg(struct extension_data data,
-                         unsigned long *step_num_ptr, unsigned long *size_ptr,
-                         size_t *size_history);
+void ext_step_from_arg(struct extension_data data, unsigned long *size_ptr,
+                       char *step_state_ptr);
 #else
-size_t ext_nums_from_arg(struct extension_data data,
-                         unsigned long *step_num_ptr, unsigned long *size_ptr,
-                         size_t *size_history, int *fd);
-#endif // ndef LC_ALLOW_EXCHANGE_FD
-
-// unpack history array from data buffer
-#ifndef LC_ALLOW_EXCHANGE_FD
-void ext_history_from_arg(struct extension_data data, size_t size_history,
-                          char *history_ptr);
-#else
-void ext_history_from_arg(struct extension_data data, size_t size_history,
-                          char *history_ptr, int *fd);
+void ext_step_from_arg(struct extension_data data, unsigned long *size_ptr,
+                       char *step_state_ptr, int *fd);
 #endif // ndef LC_ALLOW_EXCHANGE_FD
 
 char *packbuf(char *buf, char *data, size_t len);

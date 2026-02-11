@@ -14,32 +14,6 @@
 #include "world.h"
 #endif
 
-void step(char *world_history, const unsigned long size,
-          const unsigned long step_number) {
-  for (unsigned long y = 0; y < size; y++) {
-    for (unsigned long x = 0; x < size; x++) {
-      const unsigned char ln =
-          living_neighbours(world_history, size, step_number - 1, x, y);
-      char state = get_value(world_history, size, step_number - 1, x, y);
-      if (1 == state) {
-        if (ln < 2) {
-          state = 0;
-        } else if (2 == ln || 3 == ln) {
-          state = 1;
-        } else if (ln > 3) {
-          state = 0;
-        }
-      } else if (0 == state) {
-        if (3 == ln) {
-          state = 1;
-        }
-      }
-
-      set_value(world_history, size, step_number, x, y, state);
-    }
-  }
-}
-
 void print_world(int fd, char *world_history, const unsigned long size,
                  const unsigned long step_number) {
   /*
@@ -53,7 +27,7 @@ void print_world(int fd, char *world_history, const unsigned long size,
   */
   for (unsigned long y = 0; y < size; y++) {
     for (unsigned long x = 0; x < size; x++) {
-      char v = get_value(world_history, size, step_number, x, y);
+      char v = world_get_value(world_history, size, step_number, x, y);
       char terminator[1] = "";
       if (x < size - 1)
         terminator[0] = ',';
@@ -92,9 +66,9 @@ void init_step(char *world_history, const unsigned long size,
   }
 }
 
-char get_value(char *world_history, const unsigned long size,
-               const unsigned long step_number, const unsigned long x,
-               const unsigned long y) {
+char world_get_value(char *world_history, const unsigned long size,
+                     const unsigned long step_number, const unsigned long x,
+                     const unsigned long y) {
   // FIXME assert x >= 0
   // FIXME assert y >= 0
   // FIXME assert x < size
@@ -102,20 +76,74 @@ char get_value(char *world_history, const unsigned long size,
   return world_history[size * size * step_number + y * size + x];
 }
 
-void set_value(char *world_history, const unsigned long size,
-               const unsigned long step_number, const unsigned long x,
-               const unsigned long y, const char value) {
+void world_get_step(char *world_history, const unsigned long size,
+                    const unsigned long step_number, char *step_ptr) {
+  const unsigned long offset = step_number * size * size;
+
+  for (unsigned long i = 0; i < size * size; i++) {
+    // copy value at ith cell in step
+    step_ptr[i] = world_history[i + offset];
+  }
+}
+
+void world_set_step(char *world_history, const unsigned long size,
+                    const unsigned long step_number, char *step) {
+  const unsigned long offset = step_number * size * size;
+
+  for (unsigned long i = 0; i < size * size; i++) {
+    // copy value at ith cell in step
+    world_history[i + offset] = step[i];
+  }
+}
+
+void step(char *cur_step, const unsigned long size, char *new_step) {
+  // void step(char *world_history, const unsigned long size,
+  //           const unsigned long step_number) {
+  for (unsigned long y = 0; y < size; y++) {
+    for (unsigned long x = 0; x < size; x++) {
+      const unsigned char ln = step_living_neighbours(cur_step, size, x, y);
+      char state = step_get_value(cur_step, size, x, y);
+      if (1 == state) {
+        if (ln < 2) {
+          state = 0;
+        } else if (2 == ln || 3 == ln) {
+          state = 1;
+        } else if (ln > 3) {
+          state = 0;
+        }
+      } else if (0 == state) {
+        if (3 == ln) {
+          state = 1;
+        }
+      }
+
+      step_set_value(new_step, size, x, y, state);
+    }
+  }
+}
+
+char step_get_value(char *step_state, const unsigned long size,
+                    const unsigned long x, const unsigned long y) {
   // FIXME assert x >= 0
   // FIXME assert y >= 0
   // FIXME assert x < size
   // FIXME assert y < size
-  world_history[size * size * step_number + y * size + x] = value;
+  return step_state[y * size + x];
 }
 
-char neighbour_state(char *world_history, const unsigned long size,
-                     const unsigned long step_number, const unsigned long x,
-                     const unsigned long y,
-                     const unsigned char neighbour_offset) {
+void step_set_value(char *step_state, const unsigned long size,
+                    const unsigned long x, const unsigned long y,
+                    const char value) {
+  // FIXME assert x >= 0
+  // FIXME assert y >= 0
+  // FIXME assert x < size
+  // FIXME assert y < size
+  step_state[y * size + x] = value;
+}
+
+char step_neighbour_state(char *step_state, const unsigned long size,
+                          const unsigned long x, const unsigned long y,
+                          const unsigned char neighbour_offset) {
   /* Numberings of the neighbours of the cell labeled "C":
         _ _ _
        |0|1|2|
@@ -132,56 +160,56 @@ char neighbour_state(char *world_history, const unsigned long size,
     if (0 == x || 0 == y) {
       result = (char)-1;
     } else {
-      result = get_value(world_history, size, step_number, x - 1, y - 1);
+      result = step_get_value(step_state, size, x - 1, y - 1);
     }
     break;
   case 1:
     if (0 == y) {
       result = (char)-1;
     } else {
-      result = get_value(world_history, size, step_number, x, y - 1);
+      result = step_get_value(step_state, size, x, y - 1);
     }
     break;
   case 2:
     if (size - 1 == x || 0 == y) {
       result = (char)-1;
     } else {
-      result = get_value(world_history, size, step_number, x + 1, y - 1);
+      result = step_get_value(step_state, size, x + 1, y - 1);
     }
     break;
   case 3:
     if (0 == x) {
       result = (char)-1;
     } else {
-      result = get_value(world_history, size, step_number, x - 1, y);
+      result = step_get_value(step_state, size, x - 1, y);
     }
     break;
   case 4:
     if (size - 1 == x) {
       result = (char)-1;
     } else {
-      result = get_value(world_history, size, step_number, x + 1, y);
+      result = step_get_value(step_state, size, x + 1, y);
     }
     break;
   case 5:
     if (0 == x || size - 1 == y) {
       result = (char)-1;
     } else {
-      result = get_value(world_history, size, step_number, x - 1, y + 1);
+      result = step_get_value(step_state, size, x - 1, y + 1);
     }
     break;
   case 6:
     if (size - 1 == y) {
       result = (char)-1;
     } else {
-      result = get_value(world_history, size, step_number, x, y + 1);
+      result = step_get_value(step_state, size, x, y + 1);
     }
     break;
   case 7:
     if (size - 1 == x || size - 1 == y) {
       result = (char)-1;
     } else {
-      result = get_value(world_history, size, step_number, x + 1, y + 1);
+      result = step_get_value(step_state, size, x + 1, y + 1);
     }
     break;
   default:
@@ -192,9 +220,9 @@ char neighbour_state(char *world_history, const unsigned long size,
   return result;
 }
 
-unsigned char living_neighbours(char *world_history, const unsigned long size,
-                                const unsigned long step_number,
-                                const unsigned long x, const unsigned long y) {
+unsigned char step_living_neighbours(char *step_state, const unsigned long size,
+                                     const unsigned long x,
+                                     const unsigned long y) {
   // FIXME assert x >= 0
   // FIXME assert y >= 0
   // FIXME assert x < size
@@ -202,7 +230,7 @@ unsigned char living_neighbours(char *world_history, const unsigned long size,
   unsigned char result = 0;
 
   for (unsigned char i = 0; i < 8; i++) {
-    if (1 == neighbour_state(world_history, size, step_number, x, y, i)) {
+    if (1 == step_neighbour_state(step_state, size, x, y, i)) {
       result += 1;
     }
   }
