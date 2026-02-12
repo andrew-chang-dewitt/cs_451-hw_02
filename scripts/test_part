@@ -21,10 +21,17 @@ args=" -s 3 -c 5 -i 011110010"
 # build
 echo "Building part binaries..."
 echo ""
-cd $part_dir
-sudo -u andrew make DBG=true part \
-    && echo "running command: $part_dbg $args" \
-    && $part_dbg $args
+cd $prj_root/libcompart \
+    && sudo -u andrew make \
+    && sudo -u andrew make \
+    && cd $part_dir \
+    && sudo -u andrew make clean \
+    && sudo -u andrew make part \
+    && echo "checking mem usage:" \
+    && valgrind -s --leak-check=full --show-leak-kinds=all $part_exe \
+    && echo "running command: $part_exe $args" \
+    && $part_exe $args
+cd $prj_root
 echo ""
 echo "done."
 echo ""

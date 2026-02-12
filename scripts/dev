@@ -11,6 +11,7 @@ life_rel_dir=$life_tgt_dir/release
 life_rel_bin_dir=$life_rel_dir/bin
 life_dbg_dir=$life_tgt_dir/debug
 life_dbg_bin_dir=$life_dbg_dir/bin
+life_gmon_dir=$life_tgt_dir/gmon
 
 life_dir=$prj_root/life
 life_exe=$life_rel_bin_dir/life
@@ -21,6 +22,7 @@ part_rel_dir=$part_tgt_dir/release
 part_rel_bin_dir=$part_rel_dir/bin
 part_dbg_dir=$part_tgt_dir/debug
 part_dbg_bin_dir=$part_dbg_dir/bin
+part_gmon_dir=$part_tgt_dir/gmon
 
 part_dir=$prj_root/part
 part_exe=$part_rel_bin_dir/partitioned_life
@@ -36,103 +38,83 @@ args="-s 20 -c 100 -i 0110010101101011110110010101101011110101111010101011111001
 cd $prj_root
 rm -rf $report_dir
 sudo -u andrew mkdir -p $report_dir
+rm -rf $tgt_dir
 
 # build hello_compartment & run it
-echo "Building libcompart..."
-echo ""
+printf "Building libcompart..."
 cd $prj_root/libcompart
-sudo -u andrew make clean
-sudo -u andrew make
-echo "...and hello_compartment..."
+sudo -u andrew make clean > /dev/null 2>&1
+sudo -u andrew make > /dev/null 2>&1
+printf "...and hello_compartment..."
 cd $hello_dir
-sudo -u andrew make clean
+sudo -u andrew make clean > /dev/null 2>&1
 sudo -u andrew make > $report_dir/a.out 2> $report_dir/a.err
+cd $prj_root
+printf "...done.\n"
 echo ""
-echo "done."
-echo ""
-echo ""
-echo "Running hello_compartment..."
+printf "Running hello_compartment..."
 # running $hello_exe requires elevated privileges; if this script is not run as
 # sudo, it will fail
-$hello_exe
-echo ""
-echo "done."
-echo ""
+$hello_exe >/dev/null 2>&1
+printf "...done.\n"
 echo ""
 
 # build
-echo "Building life binaries..."
-echo ""
+printf "Building life binaries..."
 cd $life_dir
-sudo -u andrew make clean
 sudo -u andrew make life > $report_dir/b.out 2> $report_dir/b.err
-sudo -u andrew make DBG=true life
-echo ""
-echo "done."
+sudo -u andrew make PRF=true life > /dev/null 2>&1
+cd $prj_root
+printf "...done.\n"
 echo ""
 
 # run tests
-echo "Measuring life runtime..."
-echo ""
+printf "Measuring life runtime..."
 touch $report_dir/c.out
-{ sudo -u andrew time $life_exe $args; } > $report_dir/c.out 2> $report_dir/c.err
+{ time $life_exe $args; } > $report_dir/c.out 2> $report_dir/c.err
+printf "...done.\n"
 echo ""
-echo "done."
-echo ""
-echo ""
-echo "Checking life for memory leaks..."
-echo ""
+printf "Checking life for memory leaks..."
 sudo -u andrew valgrind $life_exe $args > $report_dir/d.out 2> $report_dir/d.err
+printf "...done.\n"
 echo ""
-echo "done."
-echo ""
-echo ""
-echo "Profiling life..."
-echo ""
-cd $dbg_bin_dir
-sudo -u andrew $life_dbg $args
-sudo -u andrew gprof $life_dbg $life_dbg_bin_dir/gmon.out > $report_dir/e.out 2> $report_dir/e.err
-echo ""
-echo "done."
-echo ""
+printf "Profiling life..."
+mkdir -p $life_gmon_dir
+chown root $life_gmon_dir
+cd $life_gmon_dir
+$life_dbg $args > /dev/null 2>&1
+sudo -u andrew gprof $life_dbg gmon.out > $report_dir/e.out 2> $report_dir/e.err
+printf "...done.\n"
 echo ""
 
 # build
-echo "Building partitioned_life binaries..."
-echo ""
+printf "Building partitioned_life binaries..."
 cd $part_dir
 touch $report_dir/f.out
-sudo -u andrew make clean
 sudo -u andrew make part > $report_dir/f.out 2> $report_dir/f.err
-sudo -u andrew make PRF=true part
-echo ""
-echo "done."
+sudo -u andrew make PRF=true part > /dev/null 2>&1
+cd $prj_root
+printf "...done.\n"
 echo ""
 
 # run tests
-echo "Measuring partitioned_life runtime..."
-echo ""
+printf "Measuring partitioned_life runtime..."
 touch $report_dir/g.out
-{ sudo -u andrew time $part_exe $args; } > $report_dir/g.out 2> $report_dir/g.err
+{ time $part_exe $args; } > $report_dir/g.out 2> $report_dir/g.err
+printf "...done.\n"
 echo ""
-echo "done."
-echo ""
-echo ""
-echo "Checking part for memory leaks..."
-echo ""
+printf "Checking part for memory leaks..."
 touch $report_dir/h.out
-sudo -u andrew valgrind $part_exe $args > $report_dir/h.out 2> $report_dir/h.err
+valgrind $part_exe $args > $report_dir/h.out 2> $report_dir/h.err
+printf "...done.\n"
 echo ""
-echo "done."
-echo ""
-echo ""
-echo "Profiling part..."
-echo ""
-cd $dbg_bin_dir
+printf "Profiling part..."
+cd $part_dbg_bin_dir
 touch $report_dir/i.out
-$part_dbg $args
-sudo -u andrew gprof $part_dbg $part_dbg_bin_dir/gmon.out > $report_dir/i.out 2> $report_dir/i.err
-echo ""
-echo "done."
-echo ""
+mkdir -p $part_gmon_dir
+chown root $part_gmon_dir
+cd $part_gmon_dir
+$part_dbg $args > /dev/null 2>&1
+sudo -u andrew gprof $part_dbg gmon.out > $report_dir/i.out 2> $report_dir/i.err
+printf "...done.\n"
 echo ""

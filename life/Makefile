@@ -9,7 +9,7 @@ CFLAGS    += -Wall -Wextra -Wformat=2 -Wswitch-default -Wcast-align \
 	     
 DBG_FLAGS  = -O0 -g -include stdbool.h
 REL_FLAGS  = -O3
-PRF_FLAGS  = -p
+PRF_FLAGS  = -pg
 
 LOC       := $(shell readlink -f .)
 PRJ_ROOT  := $(LOC)/..
@@ -24,7 +24,7 @@ ifeq ($(DBG),true)
 	CFLAGS  += $(DBG_FLAGS)
 	OUT_DIR := $(DBG_DIR)
 else ifeq ($(PRF),true)
-	CFLAGS  += $(DBG_FLAGS) PRF_FLAGS
+	CFLAGS  += $(PRF_FLAGS)
 	OUT_DIR := $(DBG_DIR)
 else
 	CFLAGS  += $(REL_FLAGS)
