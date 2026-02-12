@@ -24,16 +24,17 @@ Authors: Ke Zhong, Henry Zhu, Zhilei Zheng, Nik Sultana. 2018, 2019.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #ifndef PITCHFORK_DBGSTDOUT
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 /* PITCHFORK_DBGSTDOUT */
 #endif
 
+#include "compart_api.h"
 #include "compart_base.h"
 #include "compost.h"
 
@@ -71,35 +72,36 @@ Authors: Ke Zhong, Henry Zhu, Zhilei Zheng, Nik Sultana. 2018, 2019.
 #define STRINGIFY2(x) #x
 #define STRINGIFY(x) STRINGIFY2(x)
 
-/* FIXME CHECK_NEGATIVE_ONE doesn't respond to client with terminate=1 before exiting. */
-#define CHECK_NEGATIVE_ONE(call) \
-  do { \
-    int result = (call); \
-    if(result == -1) { \
-      perror("Error " __FILE__ ":" STRINGIFY(__LINE__));\
-      exit(EXIT_NEGATIVEONE); \
-    } \
-  } while(0) \
+/* FIXME CHECK_NEGATIVE_ONE doesn't respond to client with terminate=1 before
+ * exiting. */
+#define CHECK_NEGATIVE_ONE(call)                                               \
+  do {                                                                         \
+    int result = (call);                                                       \
+    if (result == -1) {                                                        \
+      perror("Error " __FILE__ ":" STRINGIFY(__LINE__));                       \
+      exit(EXIT_NEGATIVEONE);                                                  \
+    }                                                                          \
+  } while (0)
 
 /* We only set exit_code once, to indicate the first error that
    resulted in the exit.
 */
-#define SET_EXIT_CODE(code) \
-  { \
-    if (0 == exit_code) {\
-      exit_code = code;\
-    } \
+#define SET_EXIT_CODE(code)                                                    \
+  {                                                                            \
+    if (0 == exit_code) {                                                      \
+      exit_code = code;                                                        \
+    }                                                                          \
   }
 
 #ifndef PITCHFORK_NOLOG
-#define LOG(code, msg) \
-  { \
-    char msg_buf[MSG_BUF_SIZE]; \
-    if (code <= 0) \
-      snprintf(msg_buf, MSG_BUF_SIZE - 1, "<?> %s", msg); \
-    else \
-      snprintf(msg_buf, MSG_BUF_SIZE - 1, "<%d> %s", code, msg); \
-    compart_log(msg_buf, strlen(msg_buf)); \
+#define LOG(code, msg)                                                         \
+  {                                                                            \
+    char msg_buf[MSG_BUF_SIZE];                                                \
+    if (code <= 0)                                                             \
+      snprintf(msg_buf, MSG_BUF_SIZE - 1, "<?> %s", msg);                      \
+    else                                                                       \
+      snprintf(msg_buf, MSG_BUF_SIZE - 1, "<%d> %s", code, msg);               \
+    compart_log(msg_buf, strlen(msg_buf));                                     \
   }
 #else
 /* def PITCHFORK_NOLOG */
@@ -107,21 +109,13 @@ Authors: Ke Zhong, Henry Zhu, Zhilei Zheng, Nik Sultana. 2018, 2019.
 /* PITCHFORK_NOLOG */
 #endif
 
-int libcompart_general_arg_buf_size(void) {
-  return GENERAL_ARG_BUF_SIZE;
-}
+int libcompart_general_arg_buf_size(void) { return GENERAL_ARG_BUF_SIZE; }
 
-int libcompart_msg_buf_size(void) {
-  return MSG_BUF_SIZE;
-}
+int libcompart_msg_buf_size(void) { return MSG_BUF_SIZE; }
 
-const char* libcompart_pitchfork_log_envar(void) {
-  return PITCHFORK_LOG_ENVAR;
-}
+const char *libcompart_pitchfork_log_envar(void) { return PITCHFORK_LOG_ENVAR; }
 
-int libcompart_ext_arg_buf_size(void) {
-  return EXT_ARG_BUF_SIZE;
-}
+int libcompart_ext_arg_buf_size(void) { return EXT_ARG_BUF_SIZE; }
 
 typedef enum {
   NO_REQ,
@@ -129,8 +123,7 @@ typedef enum {
   RET_FN,
 } RequestType;
 
-typedef struct
-{
+typedef struct {
 /* FIXME include tid too? */
 #ifdef INCLUDE_PID
   pid_t pid;
@@ -140,31 +133,23 @@ typedef struct
   char data[GENERAL_ARG_BUF_SIZE];
 } Request;
 
-typedef struct
-{
+typedef struct {
   int result;
   int err_no;
   char terminate;
   char data[GENERAL_ARG_BUF_SIZE];
 } Response;
 
-static Request empty_request =
-  {
-  #ifdef INCLUDE_PID
+static Request empty_request = {
+#ifdef INCLUDE_PID
     .pid = 0,
-  /* INCLUDE_PID */
-  #endif
+/* INCLUDE_PID */
+#endif
     .type = NO_REQ,
-    .data = ""
-  };
+    .data = ""};
 
-static Response empty_response =
-  {
-    .result = 0,
-    .err_no = 0,
-    .terminate = 0,
-    .data = ""
-  };
+static Response empty_response = {
+    .result = 0, .err_no = 0, .terminate = 0, .data = ""};
 
 static const struct compost *channel = NULL;
 
@@ -172,16 +157,17 @@ static bool am_i_monitor = true;
 static bool am_i_main = false;
 static int main_compart_idx = -1;
 static const int monitor_compart_idx = -1;
-static const char* compartment_name = NULL;
+static const char *compartment_name = NULL;
 
-static const char* const monitor_name = "(monitor)";
+static const char *const monitor_name = "(monitor)";
 static const char *comparting_as = NULL;
 
-static FILE* log_fd = NULL;
+static FILE *log_fd = NULL;
 static int started = 0;
 static int initialised = 0;
 
-static int no_comparts = 0; /* As declared by the user. Dimensions "comparts". */
+static int no_comparts =
+    0; /* As declared by the user. Dimensions "comparts". */
 static struct compart *comparts = NULL;
 
 struct compart_metadata {
@@ -198,23 +184,28 @@ static struct compart_config my_config;
 
 static int my_compart_idx = -1;
 
-void default_on_termination(int compart_idx)
-{
+void default_on_termination(int compart_idx) {
 #ifndef PITCHFORK_NOLOG
   if (!main_compart_dead && compart_idx != main_compart_idx) {
-      const char termination_s[] = "crashed compartment: ";
-      char *msg = malloc(strlen(termination_s) + strlen(comparts[compart_idx].name) + 1);
-      strcpy(msg, termination_s);
-      strcpy(msg + strlen(termination_s), comparts[compart_idx].name);
-      LOG(61, msg)
-      free(msg);
+    const char termination_s[] = "crashed compartment: ";
+    /* ALLOC_1 */
+    char *msg =
+        malloc(strlen(termination_s) + strlen(comparts[compart_idx].name) + 1);
+    strcpy(msg, termination_s);
+    strcpy(msg + strlen(termination_s), comparts[compart_idx].name);
+    LOG(61, msg)
+    /* ALLOC_1 */
+    free(msg);
   } else {
-      const char termination_s[] = "terminated: ";
-      char *msg = malloc(strlen(termination_s) + strlen(comparts[compart_idx].name) + 1);
-      strcpy(msg, termination_s);
-      strcpy(msg + strlen(termination_s), comparts[compart_idx].name);
-      LOG(50, msg)
-      free(msg);
+    const char termination_s[] = "terminated: ";
+    /* ALLOC_2 */
+    char *msg =
+        malloc(strlen(termination_s) + strlen(comparts[compart_idx].name) + 1);
+    strcpy(msg, termination_s);
+    strcpy(msg + strlen(termination_s), comparts[compart_idx].name);
+    LOG(50, msg)
+    /* ALLOC_2 */
+    free(msg);
   }
 /* ndef PITCHFORK_NOLOG */
 #endif
@@ -222,22 +213,21 @@ void default_on_termination(int compart_idx)
 
   /* Don't exit if there are still children */
   if (0 == --compart_count) {
-      LOG(37, "all children dead");
-      exit(EXIT_LOGGED_OFFSET + 37);
+    LOG(37, "all children dead");
+    exit(EXIT_LOGGED_OFFSET + 37);
   }
 
   int i = 0;
   for (i = 0; i < no_comparts; ++i) {
-      if (compart_idx == i) {
-          comparts_metadata[i].pid = 0;
-      } else if (0 != comparts_metadata[i].pid) {
-          kill(comparts_metadata[i].pid, SIGKILL); /* FIXME check result */
-      }
+    if (compart_idx == i) {
+      comparts_metadata[i].pid = 0;
+    } else if (0 != comparts_metadata[i].pid) {
+      kill(comparts_metadata[i].pid, SIGKILL); /* FIXME check result */
+    }
   }
 }
 
-void default_on_comm_break(int compart_idx)
-{
+void default_on_comm_break(int compart_idx) {
   (void)compart_idx; /* This is to pacify warnings about unused parameters. */
 #ifndef PITCHFORK_NOLOG
   char msg[MSG_BUF_SIZE];
@@ -246,17 +236,19 @@ void default_on_comm_break(int compart_idx)
     if (NULL == comparting_as) {
       target_name = monitor_name;
     } else {
-      target_name = "(main)"/*FIXME const*/;
+      target_name = "(main)" /*FIXME const*/;
     }
   } else {
     target_name = comparts[compart_idx].name;
   }
-  snprintf(msg, MSG_BUF_SIZE, "communication break: between %s (pid %d) and %s", compartment_name, getpid(), target_name);
+  snprintf(msg, MSG_BUF_SIZE, "communication break: between %s (pid %d) and %s",
+           compartment_name, getpid(), target_name);
   LOG(38, msg)
 /* ndef PITCHFORK_NOLOG */
 #endif
   if (NULL == comparting_as) {
-    while(1); /* Wait to be killed by the monitor */
+    while (1)
+      ; /* Wait to be killed by the monitor */
   } else {
     exit(EXIT_COMPART_CHAN_BROKE);
   }
@@ -264,17 +256,16 @@ void default_on_comm_break(int compart_idx)
 
 struct compart_config default_config = {
 #ifdef INCLUDE_PID
-  .CFG_INCLUDE_PID = 0,
+    .CFG_INCLUDE_PID = 0,
 /* INCLUDE_PID */
 #endif
-  .call_timeout = -1,
-  .activity_timeout = -1,
-  .on_call_timeout = NULL,
-  .on_activity_timeout = NULL,
-  .on_termination = &default_on_termination,
-  .on_comm_break = &default_on_comm_break,
-  .start_subs = 1
-};
+    .call_timeout = -1,
+    .activity_timeout = -1,
+    .on_call_timeout = NULL,
+    .on_activity_timeout = NULL,
+    .on_termination = &default_on_termination,
+    .on_comm_break = &default_on_comm_break,
+    .start_subs = 1};
 
 struct extension_id {
   int extension_idx;
@@ -291,8 +282,8 @@ struct extension_info {
 static unsigned current_compart_reg = 0;
 static struct extension_info registrations[MAX_COMPART_REGS];
 
-static void call_fn(struct extension_id *eid, struct extension_data *arg, struct extension_data *resp)
-{
+static void call_fn(struct extension_id *eid, struct extension_data *arg,
+                    struct extension_data *resp) {
   if (1 != started) {
     LOG(21, "call_fn() on unstarted monitor")
     exit(21 + EXIT_LOGGED_OFFSET);
@@ -303,81 +294,81 @@ static void call_fn(struct extension_id *eid, struct extension_data *arg, struct
     exit(64 + EXIT_LOGGED_OFFSET);
   }
 
-  struct extension_data (*fn)(struct extension_data) = registrations[eid->extension_idx].fn;
+  struct extension_data (*fn)(struct extension_data) =
+      registrations[eid->extension_idx].fn;
   *resp = fn(*arg);
 }
 
-enum Mode {Idle, Call};
+enum Mode { Idle, Call };
 static enum Mode monitor_mode = Idle;
 static int called_compart_idx = -1;
 
-static void sigchld_handler (int sig)
-{
-    switch (sig) {
-    case SIGCHLD:
-        {
-            int status;
-            pid_t pid;
-            while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-                int idx = -1;
-                int i = 0;
-                for (i = 0; i < no_comparts; ++i) {
-                    if (pid == comparts_metadata[i].pid) {
-                        idx = i;
-                        break;
-                    }
-                }
-
-                if (-1 == idx) {
-                    LOG(9, "unknown compartment was terminated");
-                }
-
-                my_config.on_termination(idx);
-            }
-            break;
+static void sigchld_handler(int sig) {
+  switch (sig) {
+  case SIGCHLD: {
+    int status;
+    pid_t pid;
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+      int idx = -1;
+      int i = 0;
+      for (i = 0; i < no_comparts; ++i) {
+        if (pid == comparts_metadata[i].pid) {
+          idx = i;
+          break;
         }
-    case SIGALRM:
-        {
-            if (!am_i_monitor) {
-                if (my_config.activity_timeout > -1 && NULL != my_config.on_activity_timeout) {
-                    my_config.on_activity_timeout();
-                    alarm(my_config.activity_timeout);
-                }
-            } else {
-                if (Idle == monitor_mode) {
-                    if (my_config.activity_timeout > -1 && NULL != my_config.on_activity_timeout) {
-                        my_config.on_activity_timeout();
-                        alarm(my_config.activity_timeout);
-                    }
-                } else if (Call == monitor_mode) {
-                    /* FIXME assume called_compart_idx > -1 */
-                    my_config.on_call_timeout(called_compart_idx);
-                    monitor_mode = Idle;
-                    if (my_config.activity_timeout > -1 && NULL != my_config.on_activity_timeout) {
-                        alarm(my_config.activity_timeout);
-                    }
-                } else {
-                    LOG(54, "unknown mode")
-                    exit(54 + EXIT_LOGGED_OFFSET);
-                }
-            }
-            break;
-        }
-    default:
-        LOG(53, "unexpected signal received")
-        exit(53 + EXIT_LOGGED_OFFSET);
+      }
+
+      if (-1 == idx) {
+        LOG(9, "unknown compartment was terminated");
+      }
+
+      my_config.on_termination(idx);
     }
+    break;
+  }
+  case SIGALRM: {
+    if (!am_i_monitor) {
+      if (my_config.activity_timeout > -1 &&
+          NULL != my_config.on_activity_timeout) {
+        my_config.on_activity_timeout();
+        alarm(my_config.activity_timeout);
+      }
+    } else {
+      if (Idle == monitor_mode) {
+        if (my_config.activity_timeout > -1 &&
+            NULL != my_config.on_activity_timeout) {
+          my_config.on_activity_timeout();
+          alarm(my_config.activity_timeout);
+        }
+      } else if (Call == monitor_mode) {
+        /* FIXME assume called_compart_idx > -1 */
+        my_config.on_call_timeout(called_compart_idx);
+        monitor_mode = Idle;
+        if (my_config.activity_timeout > -1 &&
+            NULL != my_config.on_activity_timeout) {
+          alarm(my_config.activity_timeout);
+        }
+      } else {
+        LOG(54, "unknown mode")
+        exit(54 + EXIT_LOGGED_OFFSET);
+      }
+    }
+    break;
+  }
+  default:
+    LOG(53, "unexpected signal received")
+    exit(53 + EXIT_LOGGED_OFFSET);
+  }
 }
 
-static void parent_loop(void)
-{
+static void parent_loop(void) {
   if (1 != started) {
     LOG(25, "parent_loop() on unstarted monitor")
     exit(25 + EXIT_LOGGED_OFFSET);
   }
 
   struct sigaction act;
-  memset (&act, 0, sizeof(act));
+  memset(&act, 0, sizeof(act));
   act.sa_handler = sigchld_handler;
   if (sigaction(SIGCHLD, &act, 0)) {
     exit(EXIT_SIGACTION);
@@ -386,16 +377,18 @@ static void parent_loop(void)
     exit(EXIT_SIGACTION);
   }
 
-  if (my_config.activity_timeout == 0 && NULL != my_config.on_activity_timeout) {
+  if (my_config.activity_timeout == 0 &&
+      NULL != my_config.on_activity_timeout) {
     my_config.on_activity_timeout();
-  } else if (my_config.activity_timeout > 0 && NULL != my_config.on_activity_timeout) {
+  } else if (my_config.activity_timeout > 0 &&
+             NULL != my_config.on_activity_timeout) {
     alarm(my_config.activity_timeout);
   }
 
-  while(1) {
+  while (1) {
     Request request = empty_request;
     int result = compost_recv(channel, &request, sizeof(Request));
-    if (0 >= result)/*FIXME check if this is the right range*/ {
+    if (0 >= result) /*FIXME check if this is the right range*/ {
       my_config.on_comm_break(main_compart_idx);
     }
 
@@ -407,79 +400,89 @@ static void parent_loop(void)
 
     /* FIXME check pid and tid? */
 
-    switch(request.type)
-    {
-      case RET_FN:
-        {
-          monitor_mode = Idle;
-          if (my_config.activity_timeout > -1 && NULL != my_config.on_activity_timeout) {
-              alarm(my_config.activity_timeout);
-          }
+    switch (request.type) {
+    case RET_FN: {
+      monitor_mode = Idle;
+      if (my_config.activity_timeout > -1 &&
+          NULL != my_config.on_activity_timeout) {
+        alarm(my_config.activity_timeout);
+      }
 
-          struct extension_id eid;
-          memcpy(&eid, request.data, sizeof(eid));
-          /* FIXME assume (am_i_monitor) */
+      struct extension_id eid;
+      memcpy(&eid, request.data, sizeof(eid));
+      /* FIXME assume (am_i_monitor) */
 
 #ifndef PITCHFORK_NOLOG
-          const char from_s[] = "(monitor) return from ";
-          char *msg = malloc(strlen(from_s) + strlen(comparts[registrations[eid.extension_idx].compart_idx].name) + 1);
-          strcpy(msg, from_s);
-          strcpy(msg + strlen(from_s), comparts[registrations[eid.extension_idx].compart_idx].name);
-          LOG(46, msg)
-          free(msg);
+      const char from_s[] = "(monitor) return from ";
+      /* ALLOC_3 */
+      char *msg = malloc(
+          strlen(from_s) +
+          strlen(comparts[registrations[eid.extension_idx].compart_idx].name) +
+          1);
+      strcpy(msg, from_s);
+      strcpy(msg + strlen(from_s),
+             comparts[registrations[eid.extension_idx].compart_idx].name);
+      LOG(46, msg)
+      /* ALLOC_3 */
+      free(msg);
 /* ndef PITCHFORK_NOLOG */
 #endif
-          break;
-        }
-      case CALL_FN:
-        {
-          struct extension_id eid;
-          struct extension_data resp;
-          memcpy(&eid, request.data, sizeof(eid));
-          memcpy(&arg, request.data + sizeof(eid), sizeof(arg));
+      break;
+    }
+    case CALL_FN: {
+      struct extension_id eid;
+      struct extension_data resp;
+      memcpy(&eid, request.data, sizeof(eid));
+      memcpy(&arg, request.data + sizeof(eid), sizeof(arg));
 
-          /* FIXME check if function has been registered to this compartment. */
+      /* FIXME check if function has been registered to this compartment. */
 
-          if (!am_i_monitor) {
+      if (!am_i_monitor) {
 #ifdef LC_ALLOW_EXCHANGE_FD
-            /* FIXME assert resp.fdc < LC_ALLOW_EXCHANGE_FD */
-            int i = 0;
-            for (i = 0; i < arg.fdc; i++) {
-              compost_recv_fd(channel, &(arg.fd[i]));
-            }
+        /* FIXME assert resp.fdc < LC_ALLOW_EXCHANGE_FD */
+        int i = 0;
+        for (i = 0; i < arg.fdc; i++) {
+          compost_recv_fd(channel, &(arg.fd[i]));
+        }
 /* LC_ALLOW_EXCHANGE_FD */
 #endif
-            call_fn(&eid, &arg, &resp);
-            response.result = 0; /* FIXME const -- field is redundant. */
-            response.err_no = errno;
-            if (0 != response.result) {
-              LOG(23, "call_fn failed")
-              SET_EXIT_CODE(23 + EXIT_LOGGED_OFFSET)
-            } else {
-              memcpy(response.data, &resp, sizeof(resp));
-            }
-          } else {
-            called_compart_idx = registrations[eid.extension_idx].compart_idx;
-            monitor_mode = Call;
-            alarm(my_config.call_timeout);
+        call_fn(&eid, &arg, &resp);
+        response.result = 0; /* FIXME const -- field is redundant. */
+        response.err_no = errno;
+        if (0 != response.result) {
+          LOG(23, "call_fn failed")
+          SET_EXIT_CODE(23 + EXIT_LOGGED_OFFSET)
+        } else {
+          memcpy(response.data, &resp, sizeof(resp));
+        }
+      } else {
+        called_compart_idx = registrations[eid.extension_idx].compart_idx;
+        monitor_mode = Call;
+        alarm(my_config.call_timeout);
 
 #ifndef PITCHFORK_NOLOG
-            const char to_s[] = "(monitor) call to ";
-            char *msg = malloc(strlen(to_s) + strlen(comparts[registrations[eid.extension_idx].compart_idx].name) + 1);
-            strcpy(msg, to_s);
-            strcpy(msg + strlen(to_s), comparts[registrations[eid.extension_idx].compart_idx].name);
-            LOG(45, msg)
-            free(msg);
+        const char to_s[] = "(monitor) call to ";
+        /* ALLOC_4 */
+        char *msg = malloc(
+            strlen(to_s) +
+            strlen(
+                comparts[registrations[eid.extension_idx].compart_idx].name) +
+            1);
+        strcpy(msg, to_s);
+        strcpy(msg + strlen(to_s),
+               comparts[registrations[eid.extension_idx].compart_idx].name);
+        LOG(45, msg)
+        /* ALLOC_4 */
+        free(msg);
 /* ndef PITCHFORK_NOLOG */
 #endif
-          }
-          break;
-        }
-      default:
-        {
-          LOG(4, "Invalid request from child")
-          SET_EXIT_CODE(4 + EXIT_LOGGED_OFFSET)
-        }
+      }
+      break;
+    }
+    default: {
+      LOG(4, "Invalid request from child")
+      SET_EXIT_CODE(4 + EXIT_LOGGED_OFFSET)
+    }
     }
 
     if (0 != exit_code) {
@@ -487,7 +490,7 @@ static void parent_loop(void)
     }
 
     result = compost_send(channel, &response, sizeof(Response));
-    if (0 >= result)/*FIXME check if this is the right range*/ {
+    if (0 >= result) /*FIXME check if this is the right range*/ {
       my_config.on_comm_break(main_compart_idx);
     }
 #ifdef LC_ALLOW_EXCHANGE_FD
@@ -507,16 +510,14 @@ static void parent_loop(void)
   }
 }
 
-static bool privileged(void)
-{
-  if (getuid() != 0/*NOTE const -- uid for root*/) {
+static bool privileged(void) {
+  if (getuid() != 0 /*NOTE const -- uid for root*/) {
     return false;
   }
   return true;
 }
 
-static void drop_privs(int no_comparts, struct compart comparts[])
-{
+static void drop_privs(int no_comparts, struct compart comparts[]) {
   if (!privileged()) {
     LOG(32, "drop_privs() called in non-privileged process")
     exit(32 + EXIT_LOGGED_OFFSET);
@@ -527,7 +528,7 @@ static void drop_privs(int no_comparts, struct compart comparts[])
     exit(33 + EXIT_LOGGED_OFFSET);
   }
 
-  struct compart* compart = NULL;
+  struct compart *compart = NULL;
   int i = 0;
   for (i = 0; i < no_comparts; ++i) {
     if (0 == strcmp(compartment_name, comparts[i].name)) {
@@ -543,13 +544,16 @@ static void drop_privs(int no_comparts, struct compart comparts[])
   if (NULL != compart->path) {
     if (chdir(compart->path) != 0) {
 #ifndef PITCHFORK_NOLOG
-      const char* chdir_err = strerror(errno);
-      const char* separator = ": ";
-      char *msg = malloc(strlen(chdir_err) + strlen(separator) + strlen(compart->path) + 1);
+      const char *chdir_err = strerror(errno);
+      const char *separator = ": ";
+      /* ALLOC_5 */
+      char *msg = malloc(strlen(chdir_err) + strlen(separator) +
+                         strlen(compart->path) + 1);
       strcpy(msg, chdir_err);
       strcpy(msg + strlen(chdir_err), separator);
       strcpy(msg + strlen(chdir_err) + strlen(separator), compart->path);
       LOG(9, msg)
+      /* ALLOC_5 */
       free(msg);
 /* ndef PITCHFORK_NOLOG */
 #endif
@@ -573,227 +577,246 @@ static void drop_privs(int no_comparts, struct compart comparts[])
   }
 }
 
-static void split_parent_child(const char * const new_compartment_name, int no_comparts, struct compart comparts[])
-{
-    if (1 != started) {
-      LOG(13, "split_parent_child() on unstarted monitor")
-      exit(13 + EXIT_LOGGED_OFFSET);
+static void split_parent_child(const char *const new_compartment_name,
+                               int no_comparts, struct compart comparts[]) {
+  if (1 != started) {
+    LOG(13, "split_parent_child() on unstarted monitor")
+    exit(13 + EXIT_LOGGED_OFFSET);
+  }
+
+  pid_t pid = fork(); /* FIXME check success of this */
+
+  if (!pid) /* Child */
+  {
+    am_i_monitor = false;
+    compart_count = -1; /* Children don't track this info. */
+    /* ALLOC_compartment_name */
+    compartment_name = strdup(new_compartment_name);
+    am_i_main = true;
+
+    int found = 0;
+    int i = 0;
+    for (i = 0; i < no_comparts; ++i) {
+      if (0 == strcmp(new_compartment_name, comparts[i].name)) {
+        my_compart_idx = i;
+        main_compart_idx = i;
+        found++;
+      }
     }
 
-    pid_t pid = fork(); /* FIXME check success of this */
-
-    if (!pid) /* Child */
-    {
-      am_i_monitor = false;
-      compart_count = -1; /* Children don't track this info. */
-      compartment_name = strdup(new_compartment_name);
-      am_i_main = true;
-
-      int found = 0;
-      int i = 0;
-      for (i = 0; i < no_comparts; ++i) {
-        if (0 == strcmp(new_compartment_name, comparts[i].name)) {
-          my_compart_idx = i;
-          main_compart_idx = i;
-          found++;
-        }
-      }
-
-      if (0 == found) {
+    if (0 == found) {
 #ifndef PITCHFORK_NOLOG
-        const char msg_prefix[] = "split_parent_child() found 0 instances of sought compartment: ";
-        char *msg = malloc(strlen(msg_prefix) + strlen(new_compartment_name) + 1);
-        strcpy(msg, msg_prefix);
-        strcpy(msg + strlen(msg_prefix), new_compartment_name);
-        LOG(57, msg)
-        free(msg);
+      const char msg_prefix[] =
+          "split_parent_child() found 0 instances of sought compartment: ";
+      /* ALLOC_6 */
+      char *msg = malloc(strlen(msg_prefix) + strlen(new_compartment_name) + 1);
+      strcpy(msg, msg_prefix);
+      strcpy(msg + strlen(msg_prefix), new_compartment_name);
+      LOG(57, msg)
+      /* ALLOC_6 */
+      free(msg);
 /* ndef PITCHFORK_NOLOG */
 #endif
-        exit(57 + EXIT_LOGGED_OFFSET);
-      } else if (found > 1) {
+      exit(57 + EXIT_LOGGED_OFFSET);
+    } else if (found > 1) {
 #ifndef PITCHFORK_NOLOG
-        const char msg_prefix[] = "split_parent_child() found multiple instances of sought compartment: ";
-        char *msg = malloc(strlen(msg_prefix) + strlen(new_compartment_name) + 1);
-        strcpy(msg, msg_prefix);
-        strcpy(msg + strlen(msg_prefix), new_compartment_name);
-        LOG(58, msg)
-        free(msg);
+      const char msg_prefix[] = "split_parent_child() found multiple instances "
+                                "of sought compartment: ";
+      /* ALLOC_7 */
+      char *msg = malloc(strlen(msg_prefix) + strlen(new_compartment_name) + 1);
+      strcpy(msg, msg_prefix);
+      strcpy(msg + strlen(msg_prefix), new_compartment_name);
+      LOG(58, msg)
+      /* ALLOC_7 */
+      free(msg);
 /* ndef PITCHFORK_NOLOG */
 #endif
-        exit(58 + EXIT_LOGGED_OFFSET);
-      }
-
-      channel = compost_m2mon();
-
-      if (my_config.start_subs == 1) {
-        drop_privs(no_comparts, comparts);
-      }
-
-#ifndef PITCHFORK_NOLOG
-      char msg[MSG_BUF_SIZE];
-      snprintf(msg, MSG_BUF_SIZE, "starting %d %s", getpid(), new_compartment_name);
-      LOG(11, msg)
-/* ndef PITCHFORK_NOLOG */
-#endif
+      exit(58 + EXIT_LOGGED_OFFSET);
     }
-    else /* Parent */
-    { 
-      /* NOTE expect that (am_i_monitor == true); */
-      am_i_monitor = true;
-      am_i_main = false;
-      my_compart_idx = -1;
 
-      compart_count++;
+    channel = compost_m2mon();
 
-#ifndef PITCHFORK_NOLOG
-      char msg[MSG_BUF_SIZE];
-      snprintf(msg, MSG_BUF_SIZE, "starting monitor %d %s", getpid(), compartment_name);
-      LOG(62, msg)
-/* ndef PITCHFORK_NOLOG */
-#endif
-
-      int found = 0;
-      int i = 0;
-      for (i = 0; i < no_comparts; ++i) {
-        if (0 == strcmp(new_compartment_name, comparts[i].name)) {
-          comparts_metadata[i].pid = pid;
-          main_compart_idx = i;
-          found++;
-        }
-      }
-
-      /* FIXME DRY principle */
-      if (0 == found) {
-#ifndef PITCHFORK_NOLOG
-        const char msg_prefix[] = "split_parent_child() found 0 instances of sought compartment: ";
-        char *msg = malloc(strlen(msg_prefix) + strlen(new_compartment_name) + 1);
-        strcpy(msg, msg_prefix);
-        strcpy(msg + strlen(msg_prefix), new_compartment_name);
-        LOG(48, msg)
-        free(msg);
-/* ndef PITCHFORK_NOLOG */
-#endif
-        exit(48 + EXIT_LOGGED_OFFSET);
-      } else if (found > 1) {
-#ifndef PITCHFORK_NOLOG
-        const char msg_prefix[] = "split_parent_child() found multiple instances of sought compartment: ";
-        char *msg = malloc(strlen(msg_prefix) + strlen(new_compartment_name) + 1);
-        strcpy(msg, msg_prefix);
-        strcpy(msg + strlen(msg_prefix), new_compartment_name);
-        LOG(49, msg)
-        free(msg);
-/* ndef PITCHFORK_NOLOG */
-#endif
-        exit(49 + EXIT_LOGGED_OFFSET);
-      } else {
-        /* Call pre init */
-        if(comparts[main_compart_idx].preinit_fn != NULL)
-        {
-            comparts[main_compart_idx].preinit_fn();
-        }
-      }
-
-      channel = compost_mon2m();
-
-      compartment_name = monitor_name;
-      parent_loop();
+    if (my_config.start_subs == 1) {
+      drop_privs(no_comparts, comparts);
     }
+
+#ifndef PITCHFORK_NOLOG
+    char msg[MSG_BUF_SIZE];
+    snprintf(msg, MSG_BUF_SIZE, "starting %d %s", getpid(),
+             new_compartment_name);
+    LOG(11, msg)
+/* ndef PITCHFORK_NOLOG */
+#endif
+  } else /* Parent */
+  {
+    /* NOTE expect that (am_i_monitor == true); */
+    am_i_monitor = true;
+    am_i_main = false;
+    my_compart_idx = -1;
+
+    compart_count++;
+
+#ifndef PITCHFORK_NOLOG
+    char msg[MSG_BUF_SIZE];
+    snprintf(msg, MSG_BUF_SIZE, "starting monitor %d %s", getpid(),
+             compartment_name);
+    LOG(62, msg)
+/* ndef PITCHFORK_NOLOG */
+#endif
+
+    int found = 0;
+    int i = 0;
+    for (i = 0; i < no_comparts; ++i) {
+      if (0 == strcmp(new_compartment_name, comparts[i].name)) {
+        comparts_metadata[i].pid = pid;
+        main_compart_idx = i;
+        found++;
+      }
+    }
+
+    /* FIXME DRY principle */
+    if (0 == found) {
+#ifndef PITCHFORK_NOLOG
+      const char msg_prefix[] =
+          "split_parent_child() found 0 instances of sought compartment: ";
+      /* ALLOC_8 */
+      char *msg = malloc(strlen(msg_prefix) + strlen(new_compartment_name) + 1);
+      strcpy(msg, msg_prefix);
+      strcpy(msg + strlen(msg_prefix), new_compartment_name);
+      LOG(48, msg)
+      /* ALLOC_8 */
+      free(msg);
+/* ndef PITCHFORK_NOLOG */
+#endif
+      exit(48 + EXIT_LOGGED_OFFSET);
+    } else if (found > 1) {
+#ifndef PITCHFORK_NOLOG
+      const char msg_prefix[] = "split_parent_child() found multiple instances "
+                                "of sought compartment: ";
+      /* ALLOC_9 */
+      char *msg = malloc(strlen(msg_prefix) + strlen(new_compartment_name) + 1);
+      strcpy(msg, msg_prefix);
+      strcpy(msg + strlen(msg_prefix), new_compartment_name);
+      LOG(49, msg)
+      /* ALLOC_9 */
+      free(msg);
+/* ndef PITCHFORK_NOLOG */
+#endif
+      exit(49 + EXIT_LOGGED_OFFSET);
+    } else {
+      /* Call pre init */
+      if (comparts[main_compart_idx].preinit_fn != NULL) {
+        comparts[main_compart_idx].preinit_fn();
+      }
+    }
+
+    channel = compost_mon2m();
+
+    compartment_name = monitor_name;
+
+    parent_loop();
+  }
 }
 
-void compart_init(int local_no_comparts, struct compart local_comparts[], struct compart_config config)
-{
-    log_fd = stderr;
+void compart_init(int local_no_comparts, struct compart local_comparts[],
+                  struct compart_config config) {
+  log_fd = stderr;
 #ifndef PITCHFORK_NOLOG
 #ifndef PITCHFORK_DBGSTDOUT
-    char* log_path = getenv(PITCHFORK_LOG_ENVAR); /* FIXME use secure_getenv? */
-    if (NULL == log_path) {
-        fprintf(log_fd, "Must set environment variable %s since libcompart not compiled with PITCHFORK_DBGSTDOUT\n", PITCHFORK_LOG_ENVAR);
-        exit(EXIT_NO_LOGPATH);
-    } else {
-        /* Wipe our variables from the environment. */
-        unsetenv(PITCHFORK_LOG_ENVAR);
+  char *log_path = getenv(PITCHFORK_LOG_ENVAR); /* FIXME use secure_getenv? */
+  if (NULL == log_path) {
+    fprintf(log_fd,
+            "Must set environment variable %s since libcompart not compiled "
+            "with PITCHFORK_DBGSTDOUT\n",
+            PITCHFORK_LOG_ENVAR);
+    exit(EXIT_NO_LOGPATH);
+  } else {
+    /* Wipe our variables from the environment. */
+    unsetenv(PITCHFORK_LOG_ENVAR);
 
-        log_fd = fopen(log_path, "w");
-        if (log_fd == NULL) {
-            exit(EXIT_INVALID_LOGPATH);
-        }
+    log_fd = fopen(log_path, "w");
+    if (log_fd == NULL) {
+      exit(EXIT_INVALID_LOGPATH);
     }
+  }
 /* ndef PITCHFORK_DBGSTDOUT */
 #endif
 /* ndef PITCHFORK_NOLOG */
 #endif
 
-    if (my_config.start_subs == 1 && !privileged()) {
-      LOG(39, "compart_init() called in non-privileged process")
-      exit(39 + EXIT_LOGGED_OFFSET);
-    }
+  if (my_config.start_subs == 1 && !privileged()) {
+    LOG(39, "compart_init() called in non-privileged process")
+    exit(39 + EXIT_LOGGED_OFFSET);
+  }
 
-    if (!am_i_monitor) {
-      LOG(26, "compart_init() called by non-monitor")
-      exit(26 + EXIT_LOGGED_OFFSET);
-    }
+  if (!am_i_monitor) {
+    LOG(26, "compart_init() called by non-monitor")
+    exit(26 + EXIT_LOGGED_OFFSET);
+  }
 
-    if (0 != started) {
-      LOG(47, "compart_init() on already-started monitor")
-      exit(47 + EXIT_LOGGED_OFFSET);
-    }
+  if (0 != started) {
+    LOG(47, "compart_init() on already-started monitor")
+    exit(47 + EXIT_LOGGED_OFFSET);
+  }
 
-    if (config.call_timeout > -1 && NULL == config.on_call_timeout) {
-      LOG(51, "config.call_timeout > -1 && NULL == config.on_call_timeout")
-      exit(51 + EXIT_LOGGED_OFFSET);
-    }
+  if (config.call_timeout > -1 && NULL == config.on_call_timeout) {
+    LOG(51, "config.call_timeout > -1 && NULL == config.on_call_timeout")
+    exit(51 + EXIT_LOGGED_OFFSET);
+  }
 
-    if (config.activity_timeout > -1 && NULL == config.on_activity_timeout) {
-      LOG(52, "config.activity_timeout > -1 && NULL == config.on_activity_timeout")
-      exit(52 + EXIT_LOGGED_OFFSET);
-    }
+  if (config.activity_timeout > -1 && NULL == config.on_activity_timeout) {
+    LOG(52,
+        "config.activity_timeout > -1 && NULL == config.on_activity_timeout")
+    exit(52 + EXIT_LOGGED_OFFSET);
+  }
 
-    int i = 0;
-    int j = 0;
-    for (i = 0; i < no_comparts; ++i) {
-      for (j = 0; j < no_comparts; ++j) {
-        if (0 == strcmp(comparts[j].name, comparts[i].name) && j != i) {
-          LOG(56, "different compartments must have different names")
-          exit(56 + EXIT_LOGGED_OFFSET);
-        }
+  int i = 0;
+  int j = 0;
+  for (i = 0; i < no_comparts; ++i) {
+    for (j = 0; j < no_comparts; ++j) {
+      if (0 == strcmp(comparts[j].name, comparts[i].name) && j != i) {
+        LOG(56, "different compartments must have different names")
+        exit(56 + EXIT_LOGGED_OFFSET);
       }
     }
+  }
 
-    if (NULL == config.on_comm_break) {
-      config.on_comm_break = &default_on_comm_break;
-    }
-    if (NULL == config.on_termination) {
-      config.on_termination = &default_on_termination;
-    }
+  if (NULL == config.on_comm_break) {
+    config.on_comm_break = &default_on_comm_break;
+  }
+  if (NULL == config.on_termination) {
+    config.on_termination = &default_on_termination;
+  }
 
-    LOG(42, "initialising")
+  LOG(42, "initialising")
 
-    no_comparts = local_no_comparts;
-    int comparts_size = no_comparts * sizeof(struct compart);
-    comparts = malloc(comparts_size);
-    memcpy(comparts, local_comparts, comparts_size);
-    compost_init(no_comparts, comparts);
+  no_comparts = local_no_comparts;
+  int comparts_size = no_comparts * sizeof(struct compart);
+  /* ALLOC_comparts */
+  comparts = malloc(comparts_size);
+  memcpy(comparts, local_comparts, comparts_size);
+  compost_init(no_comparts, comparts);
 
-    comparts_metadata = malloc(no_comparts * sizeof(struct compart_metadata));
+  /* ALLOC_comparts_metadata */
+  comparts_metadata = malloc(no_comparts * sizeof(struct compart_metadata));
 
-    for (i = 0; i < no_comparts; i++) {
-      comparts_metadata[i].num_registrations = 0;
-      comparts_metadata[i].channel = NULL;
-      comparts_metadata[i].pid = 0; /* FIXME make optional, in case unavailable */
-    }
+  for (i = 0; i < no_comparts; i++) {
+    comparts_metadata[i].num_registrations = 0;
+    comparts_metadata[i].channel = NULL;
+    comparts_metadata[i].pid = 0; /* FIXME make optional, in case unavailable */
+  }
 
-    for (i = 0; i < MAX_COMPART_REGS; i++) {
-      registrations[i].compart_idx = -1;
-      registrations[i].fn = NULL;
-    }
+  for (i = 0; i < MAX_COMPART_REGS; i++) {
+    registrations[i].compart_idx = -1;
+    registrations[i].fn = NULL;
+  }
 
-    my_config = config;
+  my_config = config;
 
-    initialised = 1;
+  initialised = 1;
 }
 
-void compart_as(const char * const as_compartment_name)
-{
+void compart_as(const char *const as_compartment_name) {
   if (1 != initialised) {
     LOG(59, "compart_as() on before compart_init() is called")
     exit(59 + EXIT_LOGGED_OFFSET);
@@ -845,66 +868,67 @@ void compart_as(const char * const as_compartment_name)
   parent_loop();
 }
 
-void compart_start(const char * const new_compartment_name)
-{
-    unsigned total_registrations = 0;
-    int i = 0;
+void compart_start(const char *const new_compartment_name) {
+  unsigned total_registrations = 0;
+  int i = 0;
+  for (i = 0; i < no_comparts; ++i) {
+    total_registrations += comparts_metadata[i].num_registrations;
+  }
+  /* FIXME assert total_registrations == current_compart_reg */
+
+  if (0 == total_registrations) {
+    LOG(60, "compart_start() called before registrations were made")
+    exit(60 + EXIT_LOGGED_OFFSET);
+  }
+
+  if (0 != started) {
+    LOG(12, "compart_start() on already-started monitor")
+    exit(12 + EXIT_LOGGED_OFFSET);
+  }
+
+  for (i = 0; i < no_comparts; ++i) {
+    if (0 == strcmp(new_compartment_name, comparts[i].name) &&
+        comparts_metadata[i].num_registrations > 0) {
+      LOG(55, "functions should not be registered with the main compartment")
+      exit(55 + EXIT_LOGGED_OFFSET);
+    }
+  }
+
+  if (my_config.start_subs == 1) {
     for (i = 0; i < no_comparts; ++i) {
-      total_registrations += comparts_metadata[i].num_registrations;
-    }
-    /* FIXME assert total_registrations == current_compart_reg */
+      if (0 != strcmp(new_compartment_name, comparts[i].name) &&
+          comparts_metadata[i].num_registrations > 0) {
+        pid_t pid = fork(); /* FIXME check success of this */
 
-    if (0 == total_registrations) {
-      LOG(60, "compart_start() called before registrations were made")
-      exit(60 + EXIT_LOGGED_OFFSET);
-    }
-
-    if (0 != started) {
-      LOG(12, "compart_start() on already-started monitor")
-      exit(12 + EXIT_LOGGED_OFFSET);
-    }
-
-    for (i = 0; i < no_comparts; ++i) {
-      if (0 == strcmp(new_compartment_name, comparts[i].name) && comparts_metadata[i].num_registrations > 0) {
-        LOG(55, "functions should not be registered with the main compartment")
-        exit(55 + EXIT_LOGGED_OFFSET);
-      }
-    }
-
-    if (my_config.start_subs == 1) {
-      for (i = 0; i < no_comparts; ++i) {
-        if (0 != strcmp(new_compartment_name, comparts[i].name) && comparts_metadata[i].num_registrations > 0) {
-          pid_t pid = fork(); /* FIXME check success of this */
-
-          if (!pid) {
-            /* Call pre init */
-            if(comparts[i].preinit_fn != NULL)
-            {
-                comparts[i].preinit_fn();
-            }
-
-            compart_as(comparts[i].name);
-            
-          } else {
-            comparts_metadata[i].pid = pid;
-            
-            /* NOTE expect that (am_i_monitor == true); */
-            compart_count++;
+        if (!pid) {
+          /* Call pre init */
+          if (comparts[i].preinit_fn != NULL) {
+            comparts[i].preinit_fn();
           }
+
+          compart_as(comparts[i].name);
+
+        } else {
+          comparts_metadata[i].pid = pid;
+
+          /* NOTE expect that (am_i_monitor == true); */
+          compart_count++;
         }
       }
     }
+  }
 
-    started = 1;
-    compost_start(new_compartment_name);
+  started = 1;
+  compost_start(new_compartment_name);
 
-    for (i = 0; i < no_comparts; ++i) {
-      if (0 != strcmp(new_compartment_name, comparts[i].name) && comparts_metadata[i].num_registrations > 0) {
-        comparts_metadata[i].channel = compost_m2(i);
-      }
+  for (i = 0; i < no_comparts; ++i) {
+    if (0 != strcmp(new_compartment_name, comparts[i].name) &&
+        comparts_metadata[i].num_registrations > 0) {
+      comparts_metadata[i].channel = compost_m2(i);
     }
+  }
 
-    split_parent_child(new_compartment_name, no_comparts, comparts);
+  split_parent_child(new_compartment_name, no_comparts, comparts);
 }
 
 #ifdef PITCHFORK_NOLOG
@@ -914,69 +938,72 @@ void compart_log(const char *buf, const size_t count) {
 }
 #else
 /* ndef PITCHFORK_NOLOG */
-void compart_log(const char *buf, const size_t count)
-{
-        if (NULL == log_fd) {
-            exit(EXIT_LOGGED_OFFSET);
-        }
+void compart_log(const char *buf, const size_t count) {
+  if (NULL == log_fd) {
+    exit(EXIT_LOGGED_OFFSET);
+  }
 
-        int written = fprintf(log_fd, "%s\n", buf);
-        if (written < 0 || count != ((size_t)written - 1/*Accounting for the \n*/)) {
-            exit(EXIT_WRITE_ERROR_LOGPATH);
-        }
+  int written = fprintf(log_fd, "%s\n", buf);
+  if (written < 0 || count != ((size_t)written - 1 /*Accounting for the \n*/)) {
+    exit(EXIT_WRITE_ERROR_LOGPATH);
+  }
 }
 /* PITCHFORK_NOLOG */
 #endif
 
-struct extension_id *compart_register_fn(const char * const compartment_name, struct extension_data (*fn)(struct extension_data))
-{
-    if (!am_i_monitor) {
-      LOG(40, "compart_register_fn() called by non-monitor")
-      exit(40 + EXIT_LOGGED_OFFSET);
-    }
+struct extension_id *
+compart_register_fn(const char *const compartment_name,
+                    struct extension_data (*fn)(struct extension_data)) {
+  if (!am_i_monitor) {
+    LOG(40, "compart_register_fn() called by non-monitor")
+    exit(40 + EXIT_LOGGED_OFFSET);
+  }
 
-    if (1 == started) {
-      LOG(20, "compart_register_fn() on started monitor")
-      exit(20 + EXIT_LOGGED_OFFSET);
-    }
+  if (1 == started) {
+    LOG(20, "compart_register_fn() on started monitor")
+    exit(20 + EXIT_LOGGED_OFFSET);
+  }
 
-    if (1 != initialised) {
-      LOG(31, "compart_register_fn() on before compart_init() is called")
-      exit(31 + EXIT_LOGGED_OFFSET);
-    }
+  if (1 != initialised) {
+    LOG(31, "compart_register_fn() on before compart_init() is called")
+    exit(31 + EXIT_LOGGED_OFFSET);
+  }
 
-    if (MAX_COMPART_REGS <= current_compart_reg) {
-      LOG(63, "compart_register_fn() exceeded MAX_COMPART_REGS")
-      exit(63 + EXIT_LOGGED_OFFSET);
-    }
+  if (MAX_COMPART_REGS <= current_compart_reg) {
+    LOG(63, "compart_register_fn() exceeded MAX_COMPART_REGS")
+    exit(63 + EXIT_LOGGED_OFFSET);
+  }
 
-    int compart_idx = -1;
-    int i = 0;
-    for (i = 0; i < no_comparts; ++i) {
-      if (0 == strcmp(compartment_name, comparts[i].name)) {
-        compart_idx = i;
-        comparts_metadata[i].num_registrations += 1;
-        break;
-      }
+  int compart_idx = -1;
+  int i = 0;
+  for (i = 0; i < no_comparts; ++i) {
+    if (0 == strcmp(compartment_name, comparts[i].name)) {
+      compart_idx = i;
+      comparts_metadata[i].num_registrations += 1;
+      break;
     }
+  }
 
-    if (-1 == compart_idx) {
-      /* FIXME message can be made more helpful by specifying that compartment_name hadn't previously been declared. */
-      LOG(41, "-1 == compart_idx")
-      exit(41 + EXIT_LOGGED_OFFSET);
-    }
+  if (-1 == compart_idx) {
+    /* FIXME message can be made more helpful by specifying that
+     * compartment_name hadn't previously been declared. */
+    LOG(41, "-1 == compart_idx")
+    exit(41 + EXIT_LOGGED_OFFSET);
+  }
 
-    /* FIXME check if function already registered */
-    registrations[current_compart_reg].compart_idx = compart_idx;
-    registrations[current_compart_reg].fn = fn;
-    struct extension_id * eid = malloc(sizeof(*eid));
-    eid->extension_idx = current_compart_reg;
-    current_compart_reg += 1;
-    return eid;
+  /* FIXME check if function already registered */
+  registrations[current_compart_reg].compart_idx = compart_idx;
+  registrations[current_compart_reg].fn = fn;
+  /* ALLOC_eid */
+  struct extension_id *eid = malloc(sizeof(*eid));
+  eid->extension_idx = current_compart_reg;
+  current_compart_reg += 1;
+
+  return eid;
 }
 
-struct extension_data compart_call_fn(struct extension_id *eid, struct extension_data arg)
-{
+struct extension_data compart_call_fn(struct extension_id *eid,
+                                      struct extension_data arg) {
   if (1 != started) {
     LOG(24, "compart_call_fn() on unstarted compartment")
     exit(24 + EXIT_LOGGED_OFFSET);
@@ -987,18 +1014,24 @@ struct extension_data compart_call_fn(struct extension_id *eid, struct extension
     exit(35 + EXIT_LOGGED_OFFSET);
   }
 
-  if (NULL == registrations[eid->extension_idx].fn || 0 > registrations[eid->extension_idx].compart_idx) {
+  if (NULL == registrations[eid->extension_idx].fn ||
+      0 > registrations[eid->extension_idx].compart_idx) {
     LOG(65, "compart_call_fn() attempting to call unregistered function")
     exit(65 + EXIT_LOGGED_OFFSET);
   }
 
 #ifndef PITCHFORK_NOLOG
   const char to_s[] = " to ";
-  char *msg = malloc(strlen(to_s) + strlen(compartment_name) + strlen(comparts[registrations[eid->extension_idx].compart_idx].name) + 1);
+  /* ALLOC_10 */
+  char *msg = malloc(
+      strlen(to_s) + strlen(compartment_name) +
+      strlen(comparts[registrations[eid->extension_idx].compart_idx].name) + 1);
   strcpy(msg, compartment_name);
   strcpy(msg + strlen(compartment_name), to_s);
-  strcpy(msg + strlen(compartment_name) + strlen(to_s), comparts[registrations[eid->extension_idx].compart_idx].name);
+  strcpy(msg + strlen(compartment_name) + strlen(to_s),
+         comparts[registrations[eid->extension_idx].compart_idx].name);
   LOG(44, msg)
+  /* ALLOC_10 */
   free(msg);
 /* ndef PITCHFORK_NOLOG */
 #endif
@@ -1015,48 +1048,60 @@ struct extension_data compart_call_fn(struct extension_id *eid, struct extension
   memcpy(request.data, eid, sizeof(*eid));
 
   int result = compost_send(channel, &request, sizeof(Request)/* FIXME make this message to monitor smaller -- we don't need to have space for the full arg in the request that we send to the monitor*/);
-  if (0 >= result)/*FIXME check if this is the right range*/ {
+  if (0 >= result) /*FIXME check if this is the right range*/ {
     my_config.on_comm_break(monitor_compart_idx);
   }
 
   Response monitor_response = empty_response;
   result = compost_recv(channel, &monitor_response, sizeof(Response));
-  if (0 >= result)/*FIXME check if this is the right range*/ {
+  if (0 >= result) /*FIXME check if this is the right range*/ {
     my_config.on_comm_break(monitor_compart_idx);
   }
 
   memcpy(request.data + sizeof(*eid), &arg, sizeof(arg));
-  /* FIXME ensure registrations[eid->extension_idx].compart_idx < compart_count */
-  result = compost_send(comparts_metadata[registrations[eid->extension_idx].compart_idx].channel, &request, sizeof(Request));
-  if (0 >= result)/*FIXME check if this is the right range*/ {
+  /* FIXME ensure registrations[eid->extension_idx].compart_idx < compart_count
+   */
+  result = compost_send(
+      comparts_metadata[registrations[eid->extension_idx].compart_idx].channel,
+      &request, sizeof(Request));
+  if (0 >= result) /*FIXME check if this is the right range*/ {
     my_config.on_comm_break(registrations[eid->extension_idx].compart_idx);
   }
 #ifdef LC_ALLOW_EXCHANGE_FD
   /* FIXME assert arg.fdc < LC_ALLOW_EXCHANGE_FD */
   int i = 0;
   for (i = 0; i < arg.fdc; i++) {
-    compost_send_fd(comparts_metadata[registrations[eid->extension_idx].compart_idx].channel, arg.fd[i]);
+    compost_send_fd(
+        comparts_metadata[registrations[eid->extension_idx].compart_idx]
+            .channel,
+        arg.fd[i]);
   }
 /* LC_ALLOW_EXCHANGE_FD */
 #endif
 
   Response response = empty_response;
-  result = compost_recv(comparts_metadata[registrations[eid->extension_idx].compart_idx].channel, &response, sizeof(Response));
-  if (0 >= result)/*FIXME check if this is the right range*/ {
+  result = compost_recv(
+      comparts_metadata[registrations[eid->extension_idx].compart_idx].channel,
+      &response, sizeof(Response));
+  if (0 >= result) /*FIXME check if this is the right range*/ {
     my_config.on_comm_break(registrations[eid->extension_idx].compart_idx);
   }
   request.type = RET_FN;
-  result = compost_send(channel, &request, sizeof(Request)); /* FIXME make message smaller */
-  if (0 >= result)/*FIXME check if this is the right range*/ {
+  result = compost_send(channel, &request,
+                        sizeof(Request)); /* FIXME make message smaller */
+  if (0 >= result) /*FIXME check if this is the right range*/ {
     my_config.on_comm_break(monitor_compart_idx);
   }
   result = compost_recv(channel, &monitor_response, sizeof(Response));
-  if (0 >= result)/*FIXME check if this is the right range*/ {
+  if (0 >= result) /*FIXME check if this is the right range*/ {
     my_config.on_comm_break(monitor_compart_idx);
   }
 
   if (1 == response.terminate) {
-    LOG(EXIT_SERVER_INSTRUCTED_CLIENT, "monitor asked for termination") /* FIXME this reply comes from the other compartment, not the monitor */
+    LOG(EXIT_SERVER_INSTRUCTED_CLIENT,
+        "monitor asked for termination") /* FIXME this reply comes from the
+                                            other compartment, not the monitor
+                                          */
     exit(EXIT_SERVER_INSTRUCTED_CLIENT);
   }
   errno = response.err_no;
@@ -1067,20 +1112,19 @@ struct extension_data compart_call_fn(struct extension_id *eid, struct extension
 #ifdef LC_ALLOW_EXCHANGE_FD
   /* FIXME assert resp.fdc < LC_ALLOW_EXCHANGE_FD */
   for (i = 0; i < resp.fdc; i++) {
-    compost_recv_fd(comparts_metadata[registrations[eid->extension_idx].compart_idx].channel, &(resp.fd[i]));
+    compost_recv_fd(
+        comparts_metadata[registrations[eid->extension_idx].compart_idx]
+            .channel,
+        &(resp.fd[i]));
   }
 /* LC_ALLOW_EXCHANGE_FD */
 #endif
   return resp;
 }
 
-const char * compart_name(void)
-{
-  return compartment_name;
-}
+const char *compart_name(void) { return compartment_name; }
 
-int compart_allowed_fd(void)
-{
+int compart_allowed_fd(void) {
 #ifdef LC_ALLOW_EXCHANGE_FD
   return LC_ALLOW_EXCHANGE_FD;
 #else

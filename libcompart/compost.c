@@ -22,9 +22,9 @@ Authors: Nik Sultana. 2019.
 #include <stdlib.h> /* FIXME for perror -- ideally remove this and use libcompart's LOG */
 #include <unistd.h>
 
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/un.h>
 
 #include "compost.h"
@@ -47,8 +47,7 @@ static struct compost *cached_m2 = NULL;
 static int no_comparts = 0;
 static struct compart *comparts = NULL;
 
-void compost_init(int local_no_comparts, struct compart *local_comparts)
-{
+void compost_init(int local_no_comparts, struct compart *local_comparts) {
   /* FIXME ensure only called once.
      FIXME for other functions, check caller + recipient.
      FIXME close everything that isn't being used.
@@ -100,50 +99,38 @@ void compost_init(int local_no_comparts, struct compart *local_comparts)
   }
 /* LC_ALLOW_EXCHANGE_FD */
 #endif
+
+  /* NOTE: adds atexit() handler to cleanup cached_2m & cached_m2 arrays */
+  atexit(compost_cleanup);
 }
 
-void compost_start(const char * const compartment_name)
-{
+void compost_start(const char *const compartment_name) {
   (void)compartment_name;
 }
 
-void compost_as(const char * const compartment_name)
-{
-  (void)compartment_name;
-}
+void compost_as(const char *const compartment_name) { (void)compartment_name; }
 
-const struct compost *compost_m2mon(void)
-{
-  return cached_m2mon;
-}
+const struct compost *compost_m2mon(void) { return cached_m2mon; }
 
-const struct compost *compost_mon2m(void)
-{
-  return cached_mon2m;
-}
+const struct compost *compost_mon2m(void) { return cached_mon2m; }
 
-const struct compost *compost_m2(int compart_idx)
-{
+const struct compost *compost_m2(int compart_idx) {
   return &(cached_m2[compart_idx]);
 }
 
-const struct compost *compost_2m(int compart_idx)
-{
+const struct compost *compost_2m(int compart_idx) {
   return &(cached_2m[compart_idx]);
 }
 
-ssize_t compost_send(const struct compost *cp, const void *buf, size_t count)
-{
+ssize_t compost_send(const struct compost *cp, const void *buf, size_t count) {
   return write(cp->tx_fd, buf, count);
 }
 
-ssize_t compost_recv(const struct compost *cp, void *buf, size_t count)
-{
+ssize_t compost_recv(const struct compost *cp, void *buf, size_t count) {
   return read(cp->rx_fd, buf, count);
 }
 
-void compost_close(struct compost *cp)
-{
+void compost_close(struct compost *cp) {
   close(cp->tx_fd);
   close(cp->rx_fd);
 #ifdef LC_ALLOW_EXCHANGE_FD
@@ -155,12 +142,11 @@ void compost_close(struct compost *cp)
 }
 
 #ifdef LC_ALLOW_EXCHANGE_FD
-void compost_send_fd(const struct compost *cp, int fd)
-{
+void compost_send_fd(const struct compost *cp, int fd) {
   struct stat statbuf;
   if (fstat(fd, &statbuf)) {
     perror("composed_send_fd()");
-    exit(1/*FIXME const*/);
+    exit(1 /*FIXME const*/);
   }
 
   char control[CMSG_SPACE(sizeof(int))];
@@ -182,17 +168,16 @@ void compost_send_fd(const struct compost *cp, int fd)
   cmptr->cmsg_len = CMSG_LEN(sizeof(int));
   cmptr->cmsg_level = SOL_SOCKET;
   cmptr->cmsg_type = SCM_RIGHTS;
-  *((int*)CMSG_DATA(cmptr)) = fd;
+  *((int *)CMSG_DATA(cmptr)) = fd;
 
   int len = sendmsg(cp->fdtx_fd, &msg, 0);
   if (len <= 0) {
     perror("composed_send_fd()");
-    exit(1/*FIXME const*/);
+    exit(1 /*FIXME const*/);
   }
 }
 
-void compost_recv_fd(const struct compost *cp, int *fd)
-{
+void compost_recv_fd(const struct compost *cp, int *fd) {
   char control[CMSG_SPACE(sizeof(int))];
   char buf[1];
 
@@ -213,16 +198,21 @@ void compost_recv_fd(const struct compost *cp, int *fd)
   if (len <= 0) {
     perror("composed_recv_fd()");
     *fd = -1;
-    exit(1/*FIXME const*/);
+    exit(1 /*FIXME const*/);
   }
 
   struct cmsghdr *cmptr = CMSG_FIRSTHDR(&msg);
   if (NULL == cmptr || cmptr->cmsg_len != CMSG_LEN(sizeof(int)) ||
       cmptr->cmsg_level != SOL_SOCKET || cmptr->cmsg_type != SCM_RIGHTS) {
     *fd = -1;
-    exit(1/*FIXME const*/);
+    exit(1 /*FIXME const*/);
   }
-  *fd = *(int*)CMSG_DATA(cmptr);
+  *fd = *(int *)CMSG_DATA(cmptr);
 }
 /* LC_ALLOW_EXCHANGE_FD */
 #endif
+
+void compost_cleanup() {
+  free(cached_2m);
+  free(cached_m2);
+}

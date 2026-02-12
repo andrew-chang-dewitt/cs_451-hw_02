@@ -20,10 +20,11 @@ Authors: Ke Zhong, Henry Zhu, Zhilei Zheng, Nik Sultana. 2018, 2019.
 #ifndef __LIBCOMPART_API
 #define __LIBCOMPART_API
 
-
-/* FIXME since client code might depend on the size of this value, but this library and client code might be compiled
-       at different times, then it might help to allow the client to query this value at runtime to check if the
-       library's been compiled with parameters that are agreeable to the client.*/
+/* FIXME since client code might depend on the size of this value, but this
+   library and client code might be compiled at different times, then it might
+   help to allow the client to query this value at runtime to check if the
+       library's been compiled with parameters that are agreeable to the
+   client.*/
 #ifndef EXT_ARG_BUF_SIZE
 #define EXT_ARG_BUF_SIZE 512
 /* EXT_ARG_BUF_SIZE */
@@ -37,10 +38,10 @@ Authors: Ke Zhong, Henry Zhu, Zhilei Zheng, Nik Sultana. 2018, 2019.
 #include <sys/types.h>
 
 struct compart {
-  const char * const name;
+  const char *const name;
   uid_t uid;
   gid_t gid;
-  const char * const path;
+  const char *const path;
   void *comms;
   void (*preinit_fn)(void);
 };
@@ -73,11 +74,11 @@ struct extension_data {
 #if LC_ALLOW_EXCHANGE_FD < 1
 #error "LC_ALLOW_EXCHANGE_FD must be >= 1"
 #endif
-/* LC_ALLOW_EXCHANGE_FD is a compile-time-specified array-size
- for an array that holds fds. These are populated by an external
- de/marshaller, as with the serialised data.
- Not all compost instantiation are required to support fd-
- transferring. */
+  /* LC_ALLOW_EXCHANGE_FD is a compile-time-specified array-size
+   for an array that holds fds. These are populated by an external
+   de/marshaller, as with the serialised data.
+   Not all compost instantiation are required to support fd-
+   transferring. */
   ssize_t fdc;
   int fd[LC_ALLOW_EXCHANGE_FD];
 /* LC_ALLOW_EXCHANGE_FD */
@@ -87,21 +88,26 @@ struct extension_data {
 #ifndef LC_ALLOW_EXCHANGE_FD
 #define compart_check()
 #else
-#define compart_check() \
-{ \
-  if (LC_ALLOW_EXCHANGE_FD != compart_allowed_fd()) { \
-    exit(99/*FIXME const*/); \
-  } \
-}
+#define compart_check()                                                        \
+  {                                                                            \
+    if (LC_ALLOW_EXCHANGE_FD != compart_allowed_fd()) {                        \
+      exit(99 /*FIXME const*/);                                                \
+    }                                                                          \
+  }
 /* ndef LC_ALLOW_EXCHANGE_FD */
 #endif
 
-void compart_init(int no_comparts, struct compart comparts[], struct compart_config config);
-void compart_start(const char * const new_compartment_name);
-void compart_as(const char * const compartment_name);
+void compart_init(int no_comparts, struct compart comparts[],
+                  struct compart_config config);
+void compart_start(const char *const new_compartment_name);
+void compart_cleanup();
+void compart_as(const char *const compartment_name);
 struct extension_id;
-struct extension_id *compart_register_fn(const char * const new_compartment_name, struct extension_data (*fn)(struct extension_data));
-struct extension_data compart_call_fn(struct extension_id *, struct extension_data);
+struct extension_id *
+compart_register_fn(const char *const new_compartment_name,
+                    struct extension_data (*fn)(struct extension_data));
+struct extension_data compart_call_fn(struct extension_id *,
+                                      struct extension_data);
 void compart_log(const char *buf, const size_t count);
 int compart_allowed_fd(void);
 

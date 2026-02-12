@@ -25,8 +25,8 @@ Authors: Nik Sultana. 2019.
 struct compost;
 
 void compost_init(int local_no_comparts, struct compart *comparts);
-void compost_start(const char * const compartment_name);
-void compost_as(const char * const compartment_name);
+void compost_start(const char *const compartment_name);
+void compost_as(const char *const compartment_name);
 const struct compost *compost_m2mon(void);
 const struct compost *compost_mon2m(void);
 const struct compost *compost_m2(int compart_idx);
