@@ -274,6 +274,8 @@ struct extension_info {
   int compart_idx;
   struct extension_data (*fn)(struct extension_data);
 };
+static struct extension_id *my_compart_eid = NULL;
+static struct extension_id *eid_to_free = NULL;
 
 #ifndef MAX_COMPART_REGS
 #define MAX_COMPART_REGS 10
@@ -577,6 +579,17 @@ static void drop_privs(int no_comparts, struct compart comparts[]) {
   }
 }
 
+void free_compartment_name() {
+#ifndef PITCHFORK_NOLOG
+  char msg[MSG_BUF_SIZE];
+  snprintf(msg, MSG_BUF_SIZE, "%s freeing *compartment_name %lx",
+           compartment_name, (unsigned long)compartment_name);
+  LOG(75, msg)
+#endif
+  /* ALLOC_compartment_name */
+  free(compartment_name);
+}
+
 static void split_parent_child(const char *const new_compartment_name,
                                int no_comparts, struct compart comparts[]) {
   if (1 != started) {
@@ -592,6 +605,7 @@ static void split_parent_child(const char *const new_compartment_name,
     compart_count = -1; /* Children don't track this info. */
     /* ALLOC_compartment_name */
     compartment_name = strdup(new_compartment_name);
+    atexit(free_compartment_name);
     am_i_main = true;
 
     int found = 0;
@@ -645,6 +659,23 @@ static void split_parent_child(const char *const new_compartment_name,
     snprintf(msg, MSG_BUF_SIZE, "starting %d %s", getpid(),
              new_compartment_name);
     LOG(11, msg)
+/* ndef PITCHFORK_NOLOG */
+#endif
+
+    /* NOTE: adds atexit() handler for main (but not subs or monitor) to
+     * close(*log_fd), free(log_fd), and free the eids and other mallocs */
+    int atexit_succ = atexit(compart_cleanup);
+#ifndef PITCHFORK_NOLOG
+    char fmt_fail[] = "failed to register atexit handler for %s";
+    char fmt_succ[] = "registered atexit handler for %s";
+    char msg68[MSG_BUF_SIZE];
+
+    if (0 != atexit_succ) {
+      snprintf(msg68, MSG_BUF_SIZE, fmt_fail, compartment_name);
+    } else {
+      snprintf(msg68, MSG_BUF_SIZE, fmt_succ, compartment_name);
+    };
+    LOG(68, msg68)
 /* ndef PITCHFORK_NOLOG */
 #endif
   } else /* Parent */
@@ -713,6 +744,23 @@ static void split_parent_child(const char *const new_compartment_name,
     channel = compost_mon2m();
 
     compartment_name = monitor_name;
+
+    /* NOTE: adds atexit() handler for monitor (but not main or monitor) to
+     * close(*log_fd), free(log_fd), and free the eids and other mallocs */
+    int atexit_succ = atexit(compart_cleanup);
+#ifndef PITCHFORK_NOLOG
+    char fmt_fail[] = "failed to register atexit handler for %s";
+    char fmt_succ[] = "registered atexit handler for %s";
+    char msg73[MSG_BUF_SIZE];
+
+    if (0 != atexit_succ) {
+      snprintf(msg73, MSG_BUF_SIZE, fmt_fail, compartment_name);
+    } else {
+      snprintf(msg73, MSG_BUF_SIZE, fmt_succ, compartment_name);
+    };
+    LOG(73, msg73)
+/* ndef PITCHFORK_NOLOG */
+#endif
 
     parent_loop();
   }
@@ -816,6 +864,83 @@ void compart_init(int local_no_comparts, struct compart local_comparts[],
   initialised = 1;
 }
 
+void free_later(void *ptr, char *ptr_name) {
+#ifndef PITCHFORK_NOLOG
+  char msg[MSG_BUF_SIZE];
+  snprintf(msg, MSG_BUF_SIZE, "%s freeing *%s %lx", compartment_name, ptr_name,
+           (unsigned long)ptr);
+  LOG(70, msg)
+#endif /* ndef PITCHFORK_NOLOG */
+
+  free(ptr);
+}
+
+void compart_cleanup() {
+  struct compost *mon2m = compost_mon2m();
+  struct compost *m2mon = compost_m2mon();
+
+#ifndef PITCHFORK_NOLOG
+  char msg[MSG_BUF_SIZE];
+  snprintf(msg, MSG_BUF_SIZE, "%s closing channels mon2m (%lx) & m2mon (%lx)",
+           compartment_name, (unsigned long)mon2m, (unsigned long)m2mon);
+  LOG(74, msg)
+#endif
+  /* close monitor channels */
+  compost_close(mon2m);
+  compost_close(m2mon);
+
+  /*
+#ifndef PITCHFORK_NOLOG
+  memset(msg, 0, MSG_BUF_SIZE);
+  snprintf(msg, MSG_BUF_SIZE, "freeing *log_fd %lx", (unsigned long)log_fd);
+  LOG(69, msg)
+#endif
+  free(log_fd);
+  */
+
+#ifndef PITCHFORK_NOLOG
+  memset(msg, 0, MSG_BUF_SIZE);
+  snprintf(msg, MSG_BUF_SIZE, "%s freeing *my_compart_eid %lx",
+           compartment_name, (unsigned long)my_compart_eid);
+  LOG(70, msg)
+/* ndef PITCHFORK_NOLOG */
+#endif
+  /* ALLOC_eid */
+  free(my_compart_eid);
+
+  if (NULL != eid_to_free && my_compart_eid != eid_to_free) {
+#ifndef PITCHFORK_NOLOG
+    memset(msg, 0, MSG_BUF_SIZE);
+    snprintf(msg, MSG_BUF_SIZE, "%s freeing *eid_to_free %lx", compartment_name,
+             (unsigned long)eid_to_free);
+    LOG(70, msg)
+    /* ndef PITCHFORK_NOLOG */
+#endif
+    /* ALLOC_eid */
+    free(eid_to_free);
+  }
+
+#ifndef PITCHFORK_NOLOG
+  memset(msg, 0, MSG_BUF_SIZE);
+  snprintf(msg, MSG_BUF_SIZE, "%s freeing *comparts %lx", compartment_name,
+           (unsigned long)comparts);
+  LOG(71, msg)
+/* ndef PITCHFORK_NOLOG */
+#endif
+  /* ALLOC_comparts */
+  free(comparts);
+
+#ifndef PITCHFORK_NOLOG
+  memset(msg, 0, MSG_BUF_SIZE);
+  snprintf(msg, MSG_BUF_SIZE, "%s freeing *comparts_metadata %lx",
+           compartment_name, (unsigned long)comparts_metadata);
+  LOG(72, msg)
+/* ndef PITCHFORK_NOLOG */
+#endif
+  /* ALLOC_comparts_metadata */
+  free(comparts_metadata);
+}
+
 void compart_as(const char *const as_compartment_name) {
   if (1 != initialised) {
     LOG(59, "compart_as() on before compart_init() is called")
@@ -856,7 +981,22 @@ void compart_as(const char *const as_compartment_name) {
 
   started = 1;
 
-  /* FIXME add atexit() to close(*log_fd), free(log_fd), and free the eids and other mallocs in all compartments. */
+  /* NOTE: adds atexit() handler for subs (but not main or monitor) to
+   * close(*log_fd), free(log_fd), and free the eids and other mallocs */
+  int atexit_succ = atexit(compart_cleanup);
+#ifndef PITCHFORK_NOLOG
+  char fmt_fail[] = "failed to register atexit handler for %s";
+  char fmt_succ[] = "registered atexit handler for %s";
+  char msg67[MSG_BUF_SIZE];
+
+  if (0 != atexit_succ) {
+    snprintf(msg67, MSG_BUF_SIZE, fmt_fail, compartment_name);
+  } else {
+    snprintf(msg67, MSG_BUF_SIZE, fmt_succ, compartment_name);
+  };
+  LOG(67, msg67)
+/* ndef PITCHFORK_NOLOG */
+#endif
 
 #ifndef PITCHFORK_NOLOG
   char msg[MSG_BUF_SIZE];
@@ -998,6 +1138,8 @@ compart_register_fn(const char *const compartment_name,
   struct extension_id *eid = malloc(sizeof(*eid));
   eid->extension_idx = current_compart_reg;
   current_compart_reg += 1;
+
+  eid_to_free = eid;
 
   return eid;
 }

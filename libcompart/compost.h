@@ -39,6 +39,7 @@ void compost_recv_fd(const struct compost *cp, int *fd);
 /* LC_ALLOW_EXCHANGE_FD */
 #endif
 void compost_close(struct compost *cp);
+void compost_cleanup();
 
 /* __LIBCOMPOST_API */
 #endif
