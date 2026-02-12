@@ -63,7 +63,7 @@ struct extension_data ext_step(struct extension_data data) {
 #ifdef LC_ALLOW_EXCHANGE_FD
   fd = STDOUT_FILENO;
 #endif
-  dprintf(fd, "[%s:ext_step()]:%d BEGIN\n", compart_name(), getuid());
+  // dprintf(fd, "[%s:ext_step()]:%d BEGIN\n", compart_name(), getuid());
 
   // 2. deserialize argument data
   struct extension_data result;
@@ -78,8 +78,8 @@ struct extension_data ext_step(struct extension_data data) {
 #else
   ext_step_from_arg(data, &size, prev_step, fd);
 #endif
-  dprintf(fd, "[%s:ext_step()]:%d state extracted for step of size (%ld)\n",
-          compart_name(), getuid(), size);
+  // dprintf(fd, "[%s:ext_step()]:%d state extracted for step of size (%ld)\n",
+  //         compart_name(), getuid(), size);
 
   // 3. perform computation w/ output of (2)
   char *next_step = malloc(size_step);
@@ -89,6 +89,9 @@ struct extension_data ext_step(struct extension_data data) {
   result = ext_step_to_arg(size, next_step);
 
   // 5. return output of (4)
+  free(prev_step);
+  free(next_step);
+
   return result;
 }
 

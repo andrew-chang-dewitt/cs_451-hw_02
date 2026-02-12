@@ -5,9 +5,9 @@ CFLAGS    += -Wall -Wextra -Wformat=2 -Wswitch-default -Wcast-align \
 	     -Wpointer-arith -Wbad-function-cast -Wstrict-prototypes -Winline \
 	     -Wundef -Wnested-externs -Wcast-qual -Wshadow -Wwrite-strings \
 	     -Wconversion -Wunreachable-code -Wstrict-aliasing=2 -fno-common \
-	     -fstrict-aliasing -std=c99 -pedantic -DPITCHFORK_DBGSTDOUT -DINCLUDE_PID \
+	     -fstrict-aliasing -std=c99 -pedantic
 	     
-CMPT_FLAGS = -I../libcompart/
+CMPT_FLAGS = -DINCLUDE_PID -I../libcompart/
 
 ifeq ($(LC_LIB),dynamic)
 	CMPT_FLAGS += -L../libcompart/ -lcompart
@@ -17,7 +17,7 @@ endif
 
 DBG_FLAGS  = -O0 -g -include stdbool.h
 REL_FLAGS  = -O3
-PRF_FLAGS  = -p
+PRF_FLAGS  = -pg
 
 LOC       := $(shell readlink -f .)
 PRJ_ROOT  := $(LOC)/..
@@ -30,9 +30,11 @@ DBG_DIR   := $(TGT_DIR)/debug
 
 ifeq ($(DBG),true)
 	CFLAGS  += $(DBG_FLAGS)
+	CMPT_FLAGS += -DPITCHFORK_DBGSTDOUT 
 	OUT_DIR := $(DBG_DIR)
 else ifeq ($(PRF),true)
-	CFLAGS  += $(DBG_FLAGS) $(PRF_FLAGS)
+	CFLAGS  += $(PRF_FLAGS)
+	CMPT_FLAGS += -DPITCHFORK_DBGSTDOUT 
 	OUT_DIR := $(DBG_DIR)
 else
 	CFLAGS  += $(REL_FLAGS)

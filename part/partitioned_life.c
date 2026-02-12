@@ -135,19 +135,21 @@ int main(int argc, char *const *argv) {
     req = ext_step_to_arg(size, step_state);
     // call in step compartment
     res = compart_call_fn(step_ext, req);
-    // extract updated histor
+    // extract newly computed step & place @ step_state
     ext_step_from_arg(res, &size, step_state);
+    // then update history w/ this step
     world_set_step(world_history, size, step_num, step_state);
 
-    // step(world_history, size, step_num);
-
-    // dprintf(fd, "\nstep number %ld:\n", step_num);
     print_world(fd, world_history, size, step_num);
     dprintf(fd, "\n");
   }
 
+  // cleanup
   free(world_history);
   free(init_world);
+  free(step_state);
+  // free(step_ext);
+  close(fd);
 
   return EXIT_SUCCESS;
 }
