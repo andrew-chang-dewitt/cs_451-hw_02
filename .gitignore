@@ -5,3 +5,4 @@ hello_compartment/hello_compartment
 *.swp
 *.d
 report/
+gmon.out
